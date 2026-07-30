@@ -11,6 +11,22 @@ points; **PATCH** = evidence hints, wording, typos.
 Entries are added only by evolve mode with the skill owner's approval (except
 this initial release). Each entry lists the PROP ids applied, or "initial".
 
+## [4.0.0] — 2026-07-30
+
+MAJOR. Evolve session 2: both pending proposals accepted by the skill owner
+(Kartikeya Parashar); one combined bump (-07 is mode-behavior = MAJOR).
+
+- **PROP-20260730-ai-system-stability-audit-06** (evidence-hint, PATCH): S4
+  harness-hosted ceiling — per-run records + duration + cross-run stats
+  justify 1; anchor 2 requires referenced, retrievable execution traces.
+- **PROP-20260730-ai-system-stability-audit-07** (new-mode modify, MAJOR):
+  trend mode collapses same-day entries to the day's latest for trajectory
+  purposes, stating the collapse count (determinism rule; SKILL.md + README
+  trend rows updated per checklist item 10).
+
+Score impact: none — no anchors, weights, or formulas changed; no historical
+score changes (this repo's S4 = 1 is unchanged, now with an explicit ceiling).
+
 ## [3.0.0] — 2026-07-30
 
 MAJOR. First evolve-mode release: all 7 pending proposals accepted by the

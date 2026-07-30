@@ -50,51 +50,7 @@ Pending, Accepted, AND Rejected for today's PROP ids (same repo-slug) before
 numbering a new one. If the placeholder is gone, append below the last
 entry — never replace existing content. -->
 
-### PROP-20260730-ai-system-stability-audit-06
-- **Date:** 2026-07-30
-- **Proposer:** claude-fable-5
-- **Rubric version:** 3.0.0
-- **Type:** evidence-hint
-- **Affects:** SHARED_PLATFORM / S4
-- **Audit that prompted it:** ai-system-stability-audit 2026-07-30 (compare, rubric 3.0.0)
-- **Rationale:** For harness-hosted systems, S4's anchor 2 (traces across the
-  request flow + latency percentiles) is structurally unreachable from the
-  repo alone — execution traces live in the harness, not the codebase. The
-  3.0.0 harness-hosted header note covers N/A boundaries but S4 is scoreable
-  (it stayed 1 across all four audits of this repo) with no guidance on what
-  in-repo evidence could ever earn 2.
-- **Suggested change (diff-style):**
-  ```diff
-  # rubric.yaml, S4 evidence_hints
-  +          - "harness-hosted systems: per-run structured records (audit/history files) + duration fields + a script computing cross-run stats can substitute for logs+metrics; anchor 2 still requires referenced, retrievable execution traces (e.g. harness transcripts) — without them S4 caps at 1"
-  ```
-- **Expected semver bump if accepted:** patch
-- **Score impact estimate:** no current score change (this repo stays S4=1);
-  makes the S4 ceiling explicit instead of a repeated judgment call
-
-### PROP-20260730-ai-system-stability-audit-07
-- **Date:** 2026-07-30
-- **Proposer:** claude-fable-5
-- **Rubric version:** 3.0.0
-- **Type:** new-mode
-- **Affects:** modes (SKILL.md — trend row, behavior clarification)
-- **Audit that prompted it:** ai-system-stability-audit 2026-07-30 (first
-  trend-eligible history: 4 entries, all same-day)
-- **Rationale:** All 4 history entries for this slug are from one calendar
-  day (a hardening sprint), so trend trajectories degenerate: days_between=0
-  everywhere and per-check "trajectories" are really intra-day fix
-  verification. Trend mode has no stated rule for same-day clusters, so two
-  models could report different trajectory counts (4 points vs 1 collapsed
-  point per check).
-- **Suggested change (diff-style):**
-  ```diff
-  # SKILL.md — trend mode row, output column, append:
-  + Same-day entries collapse to the day's LATEST entry for trajectory
-  + purposes (intra-day runs are fix-verification, not trend signal); the
-  + collapse count is stated in the output.
-  ```
-- **Expected semver bump if accepted:** major
-- **Score impact estimate:** no score change (reporting-only determinism rule)
+*(none — delete this line when adding the first entry)*
 
 ## Accepted
 
@@ -308,6 +264,58 @@ Never delete entries from this section. -->
   N/A-whole-pillar under the correct reading)
 - **Accepted:** 2026-07-30 by Kartikeya Parashar
 - **Applied in:** v3.0.0
+- **As modified:** as filed
+
+### PROP-20260730-ai-system-stability-audit-06
+- **Date:** 2026-07-30
+- **Proposer:** claude-fable-5
+- **Rubric version:** 3.0.0
+- **Type:** evidence-hint
+- **Affects:** SHARED_PLATFORM / S4
+- **Audit that prompted it:** ai-system-stability-audit 2026-07-30 (compare, rubric 3.0.0)
+- **Rationale:** For harness-hosted systems, S4's anchor 2 (traces across the
+  request flow + latency percentiles) is structurally unreachable from the
+  repo alone — execution traces live in the harness, not the codebase. The
+  3.0.0 harness-hosted header note covers N/A boundaries but S4 is scoreable
+  (it stayed 1 across all four audits of this repo) with no guidance on what
+  in-repo evidence could ever earn 2.
+- **Suggested change (diff-style):**
+  ```diff
+  # rubric.yaml, S4 evidence_hints
+  +          - "harness-hosted systems: per-run structured records (audit/history files) + duration fields + a script computing cross-run stats can substitute for logs+metrics; anchor 2 still requires referenced, retrievable execution traces (e.g. harness transcripts) — without them S4 caps at 1"
+  ```
+- **Expected semver bump if accepted:** patch
+- **Score impact estimate:** no current score change (this repo stays S4=1);
+  makes the S4 ceiling explicit instead of a repeated judgment call
+- **Accepted:** 2026-07-30 by Kartikeya Parashar
+- **Applied in:** v4.0.0
+- **As modified:** as filed
+
+### PROP-20260730-ai-system-stability-audit-07
+- **Date:** 2026-07-30
+- **Proposer:** claude-fable-5
+- **Rubric version:** 3.0.0
+- **Type:** new-mode
+- **Affects:** modes (SKILL.md — trend row, behavior clarification)
+- **Audit that prompted it:** ai-system-stability-audit 2026-07-30 (first
+  trend-eligible history: 4 entries, all same-day)
+- **Rationale:** All 4 history entries for this slug are from one calendar
+  day (a hardening sprint), so trend trajectories degenerate: days_between=0
+  everywhere and per-check "trajectories" are really intra-day fix
+  verification. Trend mode has no stated rule for same-day clusters, so two
+  models could report different trajectory counts (4 points vs 1 collapsed
+  point per check).
+- **Suggested change (diff-style):**
+  ```diff
+  # SKILL.md — trend mode row, output column, append:
+  + Same-day entries collapse to the day's LATEST entry for trajectory
+  + purposes (intra-day runs are fix-verification, not trend signal); the
+  + collapse count is stated in the output.
+  ```
+- **Expected semver bump if accepted:** major
+- **Score impact estimate:** no score change (reporting-only determinism rule)
+- **Accepted:** 2026-07-30 by Kartikeya Parashar
+- **Applied in:** v4.0.0
 - **As modified:** as filed
 
 ## Rejected

@@ -34,7 +34,7 @@
 # it instructs, C6 hygiene of artifacts it persists) are never N/A on
 # harness grounds. [PROP-20260730-ai-system-stability-audit-01]
 
-rubric_version: "3.0.0"
+rubric_version: "4.0.0"
 last_updated: "2026-07-30"
 
 # band = highest band whose min_percent <= rounded overall; determined from the
@@ -861,6 +861,7 @@ pillars:
           - "tracing: 'opentelemetry', 'trace_id', 'span', LangSmith/Langfuse/Sentry SDK init with propagation across stages"
           - "metrics: 'prometheus', 'statsd', 'datadog', histogram/percentile metrics for latency; error-rate counters"
           - "queryability: dashboards/config for Grafana, Datadog, CloudWatch, or a hosted tracing UI"
+          - "harness-hosted systems: per-run structured records (audit/history files) + duration fields + a script computing cross-run stats can substitute for logs+metrics; anchor 2 still requires referenced, retrievable execution traces (e.g. harness transcripts) - without them S4 caps at 1"
         scoring_anchors: >-
           0 = print/console.log only; 1 = structured logs but no cross-stage
           traces or no latency/error metrics; 2 = structured logs + traces

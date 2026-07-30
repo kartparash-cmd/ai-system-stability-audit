@@ -1,6 +1,6 @@
 # The 50 Checks — Human Audit Reference
 
-> Generated from `rubric.yaml` v3.0.0 (last updated 2026-07-30) by
+> Generated from `rubric.yaml` v4.0.0 (last updated 2026-07-30) by
 > `scripts/gen_checks_doc.py`. Do not edit by hand — the rubric is the single
 > source of truth; regenerate this file after any accepted rubric change.
 
@@ -669,6 +669,7 @@ Then the math (full definitions in `scoring.md`):
 - tracing: 'opentelemetry', 'trace_id', 'span', LangSmith/Langfuse/Sentry SDK init with propagation across stages
 - metrics: 'prometheus', 'statsd', 'datadog', histogram/percentile metrics for latency; error-rate counters
 - queryability: dashboards/config for Grafana, Datadog, CloudWatch, or a hosted tracing UI
+- harness-hosted systems: per-run structured records (audit/history files) + duration fields + a script computing cross-run stats can substitute for logs+metrics; anchor 2 still requires referenced, retrievable execution traces (e.g. harness transcripts) - without them S4 caps at 1
 
 **Scoring anchors (these decide the 0/1/2):** 0 = print/console.log only; 1 = structured logs but no cross-stage traces or no latency/error metrics; 2 = structured logs + traces across the request flow + latency percentile and error-rate metrics, queryable in a dashboard or tracing UI.
 
