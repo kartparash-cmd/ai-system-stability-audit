@@ -1,0 +1,60 @@
+name: validate
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  validate:
+    name: Repo self-validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: pip install pyyaml
+      - name: Run validator
+        run: python scripts/validate.py
+
+  rubric-gate:
+    name: Rubric gate (rule G2)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Enforce G2 — no rubric edits outside an evolve session's documented bump
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          set -euo pipefail
+          base="$BASE_SHA"
+          # New branch / first push: "before" is the zero sha or unknown.
+          if [ -z "$base" ] || [ "$base" = "0000000000000000000000000000000000000000" ] \
+             || ! git cat-file -e "$base" 2>/dev/null; then
+            base="$(git rev-parse HEAD~1 2>/dev/null || true)"
+          fi
+          if [ -z "$base" ]; then
+            echo "No base commit to diff against (initial commit) — skipping gate."
+            exit 0
+          fi
+          changed="$(git diff --name-only "$base" HEAD)"
+          echo "Changed files ($EVENT_NAME, ${base}..HEAD):"
+          echo "$changed"
+          if echo "$changed" | grep -qx 'rubric.yaml'; then
+            if ! echo "$changed" | grep -qx 'CHANGELOG.md'; then
+              echo "BLOCKED by rule G2 (no rubric edits outside an evolve session's" >&2
+              echo "documented bump): rubric.yaml changed without a CHANGELOG.md change." >&2
+              exit 1
+            fi
+            if ! git diff -U0 "$base" HEAD -- rubric.yaml | grep -Eq '^[+-]rubric_version:'; then
+              echo "BLOCKED by rule G2 (no rubric edits outside an evolve session's" >&2
+              echo "documented bump): rubric.yaml changed but its rubric_version: line" >&2
+              echo "did not (semver bump required per EVOLUTION.md step 5b)." >&2
+              exit 1
+            fi
+          fi
+          echo "Rubric gate passed."

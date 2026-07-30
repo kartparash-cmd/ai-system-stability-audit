@@ -2,8 +2,11 @@
 
 This file is the single source of truth for every number the audit produces. Any model
 running this skill MUST compute scores exactly as defined here. If two models audit the
-same repo with the same per-check scores, every derived number (pillar %, overall %,
-gap impacts, deltas) must be bit-identical after rounding.
+same repo with the same per-check scores, every score-derived number (pillar %,
+overall %, gap impacts, deltas) must be bit-identical after rounding. The four §2.2
+coverage fields (`files_examined`, `configs_examined`, `coverage_pct`, `files_manifest`)
+sit outside this guarantee by design — they are per-run exploration records, not
+score-derived numbers (see the §2.2 determinism note).
 
 Pillar IDs, check IDs, and weights come from `rubric.yaml` (current version recorded in
 that file's `rubric_version:` field). The formulas below change only via an accepted
@@ -116,7 +119,8 @@ Band names and boundaries come from rubric.yaml `maturity_bands` (authoritative)
 - Carry full floating-point precision through all intermediate math. Round only at
   reporting time.
 - All percentages (pillar, overall, evidence density, coverage) and deltas: round half
-  up to **1 decimal place**.
+  up to **1 decimal place**. (Coverage follows this rounding for display consistency
+  only — it stays outside the determinism guarantee, §2.2.)
 - Gap impacts: round half up to **1 decimal place**.
 - Half-up is defined exactly as: `half_up(x) = sign(x) × floor(|x|·10 + 0.5)/10` for
   1 decimal — round half away from zero: 0.05 → 0.1, and for negative values (deltas
@@ -134,7 +138,9 @@ Band names and boundaries come from rubric.yaml `maturity_bands` (authoritative)
 ## 2. v2 metrics — precise definitions
 
 Each metric below is defined so that two different models, given the same per-check
-scores and file lists, compute the identical number.
+scores, compute the identical number — with the sole exception of the §2.2 coverage
+fields, which describe each run's own exploration and carry no cross-model determinism
+claim (see the §2.2 determinism note).
 
 ### 2.1 Evidence density
 
@@ -174,6 +180,10 @@ Reported as raw counts plus one ratio — never as a vague adjective:
 ```
 files_examined  = every distinct file path passed to a Read call, plus every
                   distinct grep-hit path cited in check evidence — nothing else
+                  — counting only paths within the resolved target; the skill's
+                  own files (rubric.yaml, scoring.md, SKILL.md, EVOLUTION.md,
+                  PROPOSALS.md, CHANGELOG.md, README.md) NEVER count unless the
+                  target IS the skill repo itself (self-audit)
 files_total     = count of tracked files in the repo: `git ls-files | wc -l`
                   (fallback for non-git dirs: all files excluding .git, node_modules,
                   venv/.venv, dist, build, __pycache__, vendor)
@@ -195,11 +205,12 @@ audit's reproducibility record (§4.1).
 actually read, and they legitimately differ across models or runs even when every
 score agrees — evidence hints are adaptive search strategies, not a fixed script.
 They are context and audit-trail fields only, never inputs to any score, delta, or
-gap number, and they sit outside the top-of-file bit-identical guarantee (which
-covers score-derived numbers: pillar %, overall %, gap impacts, deltas; this section's
-intro conditions coverage determinism on identical file lists). The deterministic,
-cross-model-comparable evidence metrics are `evidence_density_pct` and
-`distinct_evidence_paths` (§2.1), which depend only on per-check scores and citations.
+gap number, and all four sit OUTSIDE the top-of-file bit-identical guarantee **by
+design** (that guarantee covers only score-derived numbers: pillar %, overall %, gap
+impacts, deltas). No cross-model determinism is claimed for these four fields anywhere
+in this skill, under any conditions. The deterministic, cross-model-comparable
+evidence metrics are `evidence_density_pct` and `distinct_evidence_paths` (§2.1),
+which depend only on per-check scores and citations.
 Never treat a coverage difference between two audits as a regression or improvement.
 
 ### 2.3 Weighted gap impact per check
@@ -348,10 +359,13 @@ history/<repo-slug>-<YYYY-MM-DD-HHMMSS>.json
   if an origin remote exists; otherwise the repo directory basename. Then lowercase,
   collapse every run of non-alphanumerics to one hyphen, strip leading/trailing
   hyphens. Example: `git@github.com:kay/WealthPilot-Core.git` → `wealthpilot-core`.
-- Filename timestamp: the audit date and time in America/New_York, seconds precision,
-  regardless of where the audit runs or whose repo it is. Format `YYYY-MM-DD-HHMMSS`.
-  Every audit writes its own file; the baseline for compare is the most recent prior
-  entry (see SKILL.md procedure — snapshot before write).
+- Filename timestamp: the audit's **START** time — the moment the audit run begins —
+  in America/New_York, seconds precision, regardless of where the audit runs or whose
+  repo it is. Format `YYYY-MM-DD-HHMMSS`. An audit that spans midnight keeps its start
+  date. (This is the same instant EVOLUTION.md's proposal-id HHMMSS suffix uses — the
+  two must be identical for a given run.) Every audit writes its own file; the baseline
+  for compare is the most recent prior entry (see SKILL.md procedure — snapshot before
+  write).
 - **Collision rule — never overwrite.** Before writing, check whether the target
   filename already exists (two same-slug audits in the same second). If it does,
   append a monotonic suffix before `.json` — `<slug>-<YYYY-MM-DD-HHMMSS>-2.json`,
@@ -422,6 +436,9 @@ Field notes:
 
 - `checks.*.evidence` is one line, ≤ 200 chars, always containing at least one path or
   key for scores 1–2; for score 0 it states what was searched.
+- `mode` records what actually ran, not what was requested: a compare run downgraded
+  because no baseline history entry exists for the `repo_slug` records `"mode": "full"`
+  and `"compared_to": null`.
 - `model` is the exact model id string, lowercased (e.g. `claude-fable-5`) — never a
   marketing name or an abbreviation. Source of truth: the runtime-reported id of the
   model executing the audit (see SKILL.md, Output format). If no runtime id is

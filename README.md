@@ -26,28 +26,30 @@ Then, in Claude Code, ask for an audit (e.g. "audit my AI system") or invoke the
 | **gaps** | "gaps", "what's missing" | Ranked misses only — every non-2 check with its point impact, plus risks and fixes |
 | **compare** | "compare", "re-audit", "delta" | Full audit plus per-pillar and per-check deltas vs. the most recent prior audit of the same repo |
 | **partial** | "partial: <pillar names>" | Audits only the named pillars; no overall %, no history write |
-| **evolve** | "evolve", "review proposals" | Reviews pending rubric proposals with impact analysis; the skill owner accepts/rejects/defers each |
-| **dry-run** prefix | "dry-run audit", etc. | Any mode above, skipping the history write and proposal filing |
+| **evolve** | "evolve", "review proposals", "apply proposals" | Reviews pending rubric proposals with impact analysis; the skill owner accepts/rejects/defers each |
+| **dry-run** prefix | "dry-run audit", etc. | Any audit mode (full, gaps, compare, partial), skipping the history write and proposal filing; evolve has no dry-run |
 
 ## Example scorecard fragment
+
+> Illustrative — from scoring.md's 43-check 1.0.0 worked example; live rubric is 2.0.0 with 50 checks.
 
 ```
 # AI System Stability Scorecard: helpdesk-bot
 
-Rubric v2.0.0 | 2026-07-29 | target: ~/dev/helpdesk-bot | 47 of 312 tracked files examined (15.1%), 11 configs | model: claude-fable-5
+Rubric v1.0.0 | 2026-07-29 | target: ~/dev/helpdesk-bot | 47 of 312 tracked files examined (15.1%), 11 configs | model: claude-fable-5
 
 Overall adherence: 38.3% (Fragile)
-Evidence density: 58.5% (24 of 41 applicable checks citable) | distinct evidence paths: 31
+Evidence density: 58.5% (24 of 41 applicable checks citable) | distinct evidence paths: 23
 
 | Pillar | Score | Strongest evidence | Biggest gap |
 |---|---|---|---|
-| Govern | 42.9% | G7: secrets via AWS SM (infra/secrets.tf) | G3: no approval gate (+2.9 pts) |
-| Prove  | 28.6% | P2: tests/test_output_schema.py | P6: evals not in CI (+2.9 pts) |
+| Govern | 42.9% | G1: require_role() on every route (src/auth/middleware.py) | G3: no approval gate (+2.9 pts) |
+| Prove  | 28.6% | P2: tests/test_output_schema.py | P3: no LLM-as-judge evals (+2.9 pts) |
 
 ## If you implement only 3 things
 1. G3 — approval gates on risky actions — +2.9 pts — gate side-effecting tools behind confirm step
 2. G4 — immutable audit trail — +2.9 pts — append-only log of every tool call
-3. P3 — LLM-as-judge evals — +2.9 pts — judge rubric over the golden set
+3. G5 — human override mechanism — +2.9 pts — documented way to supersede any agent decision
 ```
 
 ## Self-evolution loop
@@ -64,7 +66,7 @@ Evidence density: 58.5% (24 of 41 applicable checks citable) | distinct evidence
 |---|---|
 | Overall % | Weighted average of pillar percentages (pillar % = score_sum / (2 × applicable checks)); N/A pillars trigger weight renormalization. Mapped to a maturity band. |
 | Evidence density | Applicable checks scored 1–2 with a concrete citation, divided by all applicable checks. What fraction of the rubric the codebase can prove. |
-| distinct_evidence_paths | Count of distinct file paths cited across all check evidence. Falsifiable companion to evidence density. |
+| distinct_evidence_paths | Count of distinct concrete file paths cited in the evidence of checks scored 1 or 2; directories, glob patterns, and score-0 search targets are excluded (worked example: 23). Falsifiable companion to evidence density. |
 | Gap impact | Exact overall-percentage points gained by raising one check to 2: headroom / (2 × pillar applicable checks) × normalized pillar weight. All gap impacts sum to 100 − overall %. |
 | Coverage | Files examined / tracked files (`git ls-files`), plus config count. Context for the audit's depth, never a grade. |
 
@@ -76,7 +78,30 @@ Evidence density: 58.5% (24 of 41 applicable checks citable) | distinct evidence
 - `EVOLUTION.md` — the self-improvement protocol and evolve-mode procedure
 - `PROPOSALS.md` — pending/accepted/rejected rubric proposals
 - `CHANGELOG.md` — rubric version history
-- `history/` — one JSON per audit
+- `README.md` — this overview
+- `LICENSE` — MIT license text
+- `history/` — one JSON per audit (gitignored by default except the committed worked example — see Privacy below)
+
+Mechanical integrity tooling:
+
+- `scripts/validate.py` — validates rubric.yaml structure and cross-file consistency
+- `.github/workflows/validate.yml` — CI: runs the validator on every push/PR
+- `.githooks/pre-commit` — local pre-commit gate running the same validation
+- `tests/golden/` — golden fixture the validator checks scoring math against
+
+## Privacy and the history/ directory
+
+Audit history JSONs contain evidence strings and file manifests **from the repos you audit** — file paths, function names, and config keys of potentially private codebases. To keep those details from ever reaching a public remote, `history/*.json` is gitignored by default. The one committed entry, `history/ai-system-stability-audit-2026-07-30-064451.json`, is a deliberately kept worked example whose audit target is this same public repo — zero leak by construction. If you want durable audit history, back up `history/` privately (it is not covered by pushes of this repo). Deleting a history file is the supported purge path.
+
+## Repo integrity gate
+
+After cloning, run once:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+This activates the pre-commit gate (`.githooks/pre-commit`), which validates the rubric and cross-file consistency before every commit. CI (`.github/workflows/validate.yml`) enforces the same rules on push and PR.
 
 ## License
 

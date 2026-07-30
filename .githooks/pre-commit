@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# Pre-commit hook for the ai-system-stability-audit skill repo.
+# Enable with: git config core.hooksPath .githooks
+set -euo pipefail
+
+repo_root="$(git rev-parse --show-toplevel)"
+staged_files="$(git diff --cached --name-only)"
+
+# Rule G2 (policy enforcement point): no rubric edits outside an evolve
+# session's documented bump. Any staged change to rubric.yaml must ship with
+# a staged CHANGELOG.md entry AND a staged change to the rubric_version line.
+if grep -qx 'rubric.yaml' <<< "$staged_files"; then
+  if ! grep -qx 'CHANGELOG.md' <<< "$staged_files"; then
+    echo "pre-commit: BLOCKED by rule G2 (no rubric edits outside an evolve" >&2
+    echo "session's documented bump): rubric.yaml is staged without a staged" >&2
+    echo "CHANGELOG.md change. Add the changelog entry for this bump." >&2
+    exit 1
+  fi
+  if ! git diff --cached -U0 -- rubric.yaml | grep -Eq '^[+-]rubric_version:'; then
+    echo "pre-commit: BLOCKED by rule G2 (no rubric edits outside an evolve" >&2
+    echo "session's documented bump): rubric.yaml is staged but its" >&2
+    echo "rubric_version: line is unchanged. Bump the semver per" >&2
+    echo "EVOLUTION.md step 5b." >&2
+    exit 1
+  fi
+fi
+
+# Always run the repo self-validation.
+if ! python3 "$repo_root/scripts/validate.py"; then
+  echo "pre-commit: BLOCKED — scripts/validate.py failed (see messages above)." >&2
+  exit 1
+fi

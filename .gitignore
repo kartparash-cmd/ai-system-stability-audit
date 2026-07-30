@@ -1,0 +1,8 @@
+# Audit history contains evidence strings and file manifests from audited
+# repos — keep it local. The tracked self-audit example predates this rule and
+# is deliberately kept (its target is this public repo).
+history/*.json
+
+# Python bytecode
+__pycache__/
+*.pyc

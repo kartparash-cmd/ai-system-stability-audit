@@ -19,6 +19,14 @@ practice the rubric doesn't cover yet.
 3 ideas, file the 3 with the strongest grounding in what this audit actually
 revealed.
 
+**Equally non-optional — who may evolve the rubric.** Evolve mode runs ONLY in
+an interactive session with the skill owner present. It never runs headless,
+scheduled, or agent-initiated — no cron job, workflow script, or subagent may
+trigger it or stand in for the owner. The accept/reject decision on every
+proposal must come from the human in the session. The ledger's
+"Accepted/Rejected by" line records the owner identity taken from
+`git config user.name` (fallback: the literal "skill owner").
+
 ## Before proposing: mandatory reads
 
 1. Read `PROPOSALS.md` in full — ALL THREE sections: Pending, Accepted, AND
@@ -99,6 +107,15 @@ Append only after re-reading: if the target section shows the placeholder
 `*(none — delete this line when adding the first entry)*`, delete that
 placeholder line when appending the first entry; if the placeholder is already
 gone, append below the last entry — never replace existing content.
+
+**Lost-update guard.** The append must be an append-only edit anchored on the
+CURRENT last entry of the target section — never a full-file rewrite of
+PROPOSALS.md, which can silently clobber a concurrent audit's entries. Before
+appending, note the total entry count across all three sections (Pending +
+Accepted + Rejected). After appending, re-read PROPOSALS.md and assert the new
+total entry count is ≥ the pre-append count + the number of entries you added.
+If it is lower, a concurrent write was clobbered: re-read the file and
+re-append your entries (then re-run the collision check above).
 
 A `scoring-change` proposal may target scoring.md content (formulas or the §4
 history-JSON schema) OR rubric.yaml's `maturity_bands` block; any of these
@@ -190,6 +207,15 @@ the skill with the evolve argument. Evolve mode never runs implicitly.
       a `new-mode` proposal, edit `SKILL.md`. These scoring/mode edits are
       always MAJOR bumps and are permitted ONLY in evolve mode with the skill owner's
       explicit acceptance.
+      **Stale-diff procedure:** if the proposal's diff context no longer
+      matches the current target file (the proposal was filed against an older
+      rubric version and the lines it quotes have since changed or moved), do
+      NOT force-apply the non-matching diff. Instead, restate a rebased diff —
+      the same intended change re-expressed against the current file content —
+      to the skill owner and get re-confirmation before applying, or defer the
+      proposal (per step 4's defer handling) if a faithful rebase isn't
+      possible. An acceptance given for a stale diff does not carry over to
+      the rebased one without that re-confirmation.
    b. Bump `rubric_version:` in rubric.yaml by semver. **This step is the
       normative semver policy — every other file's summary defers to it:**
       - **MAJOR** (X.0.0) — pillar weight changes, pillar restructuring,
@@ -209,7 +235,8 @@ the skill with the evolve argument. Evolve mode never runs implicitly.
    d. Move the applied entries from Pending to the "## Accepted" section of
       PROPOSALS.md. Each accepted entry keeps its original text verbatim plus
       three mandated lines:
-      - **Accepted:** YYYY-MM-DD by the skill owner
+      - **Accepted:** YYYY-MM-DD by <owner identity from `git config
+        user.name`; fallback: the literal "skill owner">
       - **Applied in:** vX.Y.Z
       - **As modified:** <amended diff summary, or "as filed">
       (The changelog remains the permanent record of what changed.)
@@ -218,7 +245,8 @@ the skill with the evolve argument. Evolve mode never runs implicitly.
 6. **Move rejected proposals** from Pending to the Rejected section verbatim,
    appending two lines:
    ```
-   - **Rejected:** YYYY-MM-DD by the skill owner
+   - **Rejected:** YYYY-MM-DD by <owner identity from `git config user.name`;
+     fallback: the literal "skill owner">
    - **Reason:** <the skill owner's reason, or the guardrail violated — specific enough
      that a future model knows what evidence would be needed to re-open it>
    ```
@@ -234,7 +262,7 @@ the skill with the evolve argument. Evolve mode never runs implicitly.
    6. Every `added_in:` value matches a real released version (checks added
       this session carry the version this bump produced).
    7. No stale literal is left in ANY skill file — grep scoring.md,
-      CHANGELOG.md, SKILL.md, and EVOLUTION.md for every weight, band,
+      CHANGELOG.md, SKILL.md, README.md, and EVOLUTION.md for every weight, band,
       check-count, pillar display name, mode name, and template-element count
       the accepted diff invalidated (SKILL.md hardcodes the pillar names in
       its output template and the "all 11 template elements" count; EVOLUTION.md
@@ -250,7 +278,8 @@ the skill with the evolve argument. Evolve mode never runs implicitly.
       appears in SKILL.md's frontmatter `description:`, and its history-write
       behavior is stated consistently in SKILL.md's history-write sentence,
       scoring.md §4's opening write rule, and (only if it writes a history
-      file) scoring.md §4.1's `mode` enum.
+      file) scoring.md §4.1's `mode` enum. Also verify README.md's modes
+      table matches SKILL.md's modes table.
    11. SKILL.md's frontmatter `description:` is ≤ 1024 characters after any
       edit (hard platform cap on skill descriptions).
    12. Every check in rubric.yaml has a non-empty scoring_anchors block
@@ -269,3 +298,27 @@ evidence is insufficient to rescore them — mark those "unknown — will apply
 from next audit" (as in step 3's impact analysis), never estimate them.
 Evolve mode never rewrites history/ files — the rescoring in impact analysis
 is presented to the skill owner for the decision, not persisted.
+
+## Reverting an accepted proposal
+
+Sometimes an accepted change turns out to be wrong in practice. Reverting is a
+rubric change like any other and follows the same discipline:
+
+1. **Open an evolve session.** Reverts happen only in evolve mode, interactive,
+   with the skill owner present and deciding — same as any other rubric edit.
+2. **Undo the change** by either:
+   - `git revert` of the evolve commit that applied the proposal, or
+   - applying the inverse diff of the accepted change by hand (when the commit
+     also contains changes that must survive).
+3. **Bump `rubric_version:`** per the SAME semver class as the original change
+   (a reverted MINOR new-check is itself a MINOR bump; a reverted MAJOR
+   scoring-change is itself a MAJOR bump). Never "roll back" the version
+   number — versions only move forward.
+4. **Add a CHANGELOG.md entry** for the new version naming the reverted PROP id
+   and the reason for the revert.
+5. **Annotate the ledger** — in the Accepted section of PROPOSALS.md, append to
+   the original entry:
+   `- **Reverted:** YYYY-MM-DD, <reason>, in vX.Y.Z`
+   Never delete or move the accepted entry; the annotation is the record.
+6. **Run the full step-7 checklist** afterward — every item, exactly as after
+   any other evolve session.

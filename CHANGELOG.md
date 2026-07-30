@@ -11,6 +11,33 @@ points; **PATCH** = evidence hints, wording, typos.
 Entries are added only by evolve mode with the skill owner's approval (except
 this initial release). Each entry lists the PROP ids applied, or "initial".
 
+## [2.0.1] — 2026-07-30
+
+PATCH. **Engine/docs only** — no rubric check, weight, or scoring-formula
+changes; `rubric_version` in rubric.yaml stays **2.0.0**. 2.0.1 is the
+ENGINE/docs patch level, recorded here explicitly.
+
+Tri-panel round-3 consistency fixes: README example scorecard regenerated
+against the scoring.md §4.2/§5.6 worked example (labeled illustrative 1.0.0,
+deterministic cell selections corrected), metrics glossary aligned to
+scoring.md §2.1, stale literals fixed (11-item → 12-item verification
+checklist).
+
+Engine doc clarifications: dry-run scope (audit modes only; evolve has none),
+bucket heuristic, target-scoped coverage, start-time timestamps, scoped
+step-9 commits, gaps header enumeration, Target summary line, and a
+strongest-evidence fallback.
+
+Instruction/documentation additions: audited-content isolation instruction
+(G8); history/ publication-boundary default — history/*.json gitignored so
+audited-repo evidence never reaches a public remote (C6); proposal revert
+procedure (R3); owner-identity rule + lost-update guard (evolve mode); stated
+audit-duration target (N1).
+
+New mechanical infrastructure: CI validation (`.github/workflows/validate.yml`),
+pre-commit gate (`.githooks/pre-commit`), golden fixture (`tests/golden/`),
+and `scripts/validate.py`.
+
 ## [2.0.0] — 2026-07-29
 
 Initial versioned release. Restructures the v1 skill (monolithic SKILL.md,
@@ -31,7 +58,7 @@ common check set with the headline labeled separately; gaps-table cap
 single-sourced in scoring.md §2.4 plus an unrounded gap-sum aggregation rule;
 sign-correct half-away-from-zero rounding; weights/bands single-sourced to
 rubric.yaml with worked examples marked illustrative; evolve-mode bookkeeping
-(last_updated + added_in maintenance, 11-item verification checklist,
+(last_updated + added_in maintenance, 12-item verification checklist,
 scoring-change proposals may target maturity_bands or the §4 history-JSON
 schema, with schema_version bumped iff §4.1 changed); namespaced
 concurrent-safe proposal ids (`PROP-YYYYMMDD-<repo-slug>-NN`) with
