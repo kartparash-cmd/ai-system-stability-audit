@@ -105,6 +105,58 @@ entry — never replace existing content. -->
   bump 1 → 2 alongside the schema edit (per EVOLUTION.md scoring-change scope;
   verified by evolve checklist item 9).
 
+### PROP-20260730-ai-system-stability-audit-01
+- **Date:** 2026-07-30
+- **Proposer:** claude-fable-5
+- **Rubric version:** 2.0.0
+- **Type:** evidence-hint
+- **Affects:** rubric header note + per-check hints on G1, G6, G9, S1, S2, S5
+- **Audit that prompted it:** ai-system-stability-audit 2026-07-30 (self-audit)
+- **Rationale:** Auditing a harness-hosted system (a Claude Code skill — no
+  service code, the LLM runtime is the external harness) required 11 N/A calls
+  out of 50 checks (22%), each argued from scratch because every evidence hint
+  assumes a networked AI service. The N/A boundary between "harness provides
+  it" (G9 tools, S1 gateway) and "system should still have it" (G8 injection
+  defense, G10 write scoping — both scoreable and both non-2 here) was the
+  hardest judgment of the audit; explicit guidance would make the same calls
+  reproducible across models.
+- **Suggested change (diff-style):**
+  ```diff
+  # rubric.yaml (header comment, after the scoring-scale note)
+  + # Harness-hosted systems (skills, plugins, CLI tools where the LLM runtime
+  + # is an external harness): checks on infrastructure the harness owns
+  + # (G1 authn, G6 kill switch, G9 tool registry, S1/S2 gateway/failover,
+  + # S5 async) are legitimately N/A with a one-line argument. Checks on the
+  + # system's OWN behavior (G8 injection defense of content it reads, G10
+  + # scoping of writes it instructs, C6 hygiene of artifacts it persists)
+  + # are never N/A on harness grounds.
+  ```
+- **Expected semver bump if accepted:** patch
+- **Score impact estimate:** no score change for service repos; removes
+  ~6 judgment calls per harness-hosted audit (makes N/A sets reproducible)
+
+### PROP-20260730-ai-system-stability-audit-02
+- **Date:** 2026-07-30
+- **Proposer:** claude-fable-5
+- **Rubric version:** 2.0.0
+- **Type:** evidence-hint
+- **Affects:** CONTEXT_DATA / C6
+- **Audit that prompted it:** ai-system-stability-audit 2026-07-30 (self-audit)
+- **Rationale:** The audit's most severe finding (C6 = 0, +3.0 pts) — evidence
+  strings and file manifests from audited repos persist into a PUBLICLY synced
+  git repo — was reachable only by combining `git remote` inspection with the
+  persistence path; none of C6's five existing hints points at where persisted
+  artifacts SYNC to. Publication-boundary crossings (private source data →
+  public store) are a distinct leak class the hints currently miss entirely.
+- **Suggested change (diff-style):**
+  ```diff
+  # rubric.yaml, C6 evidence_hints
+  +          - "publication boundary: check where persisted memory/artifacts sync or publish to (git remotes, shared drives, artifact stores) — persistence into a store with BROADER visibility than the source data is a trust-boundary crossing (anti-evidence); run `git remote -v` on the store's repo"
+  ```
+- **Expected semver bump if accepted:** patch
+- **Score impact estimate:** stricter C6 scoring for systems that persist
+  audit/memory artifacts into shared or public stores (this repo included)
+
 ## Accepted
 
 <!-- Evolve mode moves accepted proposals here. Each entry keeps its original
