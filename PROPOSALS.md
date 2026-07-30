@@ -2,7 +2,7 @@
 
 Improvement proposals for `rubric.yaml`, filed by auditing models per
 `EVOLUTION.md`. **Nothing here is active** — entries change the rubric only
-after Kay accepts them in evolve mode. Read EVOLUTION.md before adding an
+after the skill owner accepts them in evolve mode. Read EVOLUTION.md before adding an
 entry; do not re-file anything in the Rejected section without new evidence
 answering its rejection reason.
 
@@ -67,7 +67,7 @@ entry — never replace existing content. -->
 - **Suggested change (diff-style):**
   ```diff
   # SKILL.md — Modes table
-   | **evolve** | "evolve", "review proposals", "apply proposals" | Process PROPOSALS.md exactly per EVOLUTION.md — review cards, impact analysis against history/, Kay decides each proposal. Never runs implicitly. |
+   | **evolve** | "evolve", "review proposals", "apply proposals" | Process PROPOSALS.md exactly per EVOLUTION.md — review cards, impact analysis against history/, the skill owner decides each proposal. Never runs implicitly. |
   +| **trend** | "trend", "trajectory" (requires ≥3 history entries for this repo_slug) | Per-check score trajectories across history entries, checks that never moved, N/A frequency per check; reporting only — no new scoring sweep, no history write, still files proposals |
   ```
 - **Expected semver bump if accepted:** major
@@ -107,7 +107,7 @@ entry — never replace existing content. -->
 
 <!-- Evolve mode moves accepted proposals here. Each entry keeps its original
 text verbatim plus three mandated lines:
-  - **Accepted:** YYYY-MM-DD by Kay
+  - **Accepted:** YYYY-MM-DD by the skill owner
   - **Applied in:** vX.Y.Z
   - **As modified:** <amended diff summary, or "as filed">
 Never delete entries from this section. -->

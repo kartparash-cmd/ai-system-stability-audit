@@ -8,8 +8,8 @@ new modes, scoring-engine edits (accepted scoring-change and new-mode
 proposals edit scoring.md / SKILL.md and are always MAJOR);
 **MINOR** = new checks, check scope clarifications that change what earns
 points; **PATCH** = evidence hints, wording, typos.
-Entries are added only by evolve mode with Kay's approval (except this
-initial release). Each entry lists the PROP ids applied, or "initial".
+Entries are added only by evolve mode with the skill owner's approval (except
+this initial release). Each entry lists the PROP ids applied, or "initial".
 
 ## [2.0.0] — 2026-07-29
 
@@ -59,7 +59,7 @@ best-effort post-audit commits.
   and context hygiene (Context & Data 6), D7 structured output validation
   (Decision Engine 7), S6 supply chain integrity (Shared Platform 6).
 - `EVOLUTION.md`: self-improvement protocol — mandatory >=1 proposal per audit
-  (max 3), guardrails, evolve mode with Kay-only approval and semver bumps.
+  (max 3), guardrails, evolve mode with owner-only approval and semver bumps.
 - `PROPOSALS.md` and this changelog.
 - **gaps mode**: reports only missing/partial checks, ranked by weighted point
   gain ("adding X gains +N.N points").
@@ -68,7 +68,7 @@ best-effort post-audit commits.
   repo, flagging cross-rubric-version comparisons and recomputing their deltas
   deterministically on the common check set (scoring.md §3).
 - **evolve mode**: reviews pending proposals with impact analysis against
-  history/; Kay decides; accepted changes bump this version.
+  history/; the skill owner decides; accepted changes bump this version.
 - Metrics-first output language: files scanned, checks evidenced vs. absent,
   evidence density, point deltas.
 

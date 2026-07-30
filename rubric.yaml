@@ -5,7 +5,7 @@
 # bump + CHANGELOG.md entry), never the engine — with one exception: in evolve
 # mode, an accepted scoring-change proposal edits scoring.md and an accepted
 # new-mode proposal edits SKILL.md; both are always MAJOR bumps and happen only
-# with Kay's explicit acceptance.
+# with the skill owner's explicit acceptance.
 #
 # Semver policy (normative source: EVOLUTION.md step 5b):
 #   MAJOR = pillar weight changes, pillar restructuring, check

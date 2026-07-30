@@ -133,14 +133,14 @@ otherwise attractive — the reviewer applies the same list.
 
 Filing a proposal changes only PROPOSALS.md. `rubric.yaml`, `SKILL.md`,
 `scoring.md`, `CHANGELOG.md`, and all scoring behavior remain exactly as-is
-until Kay runs **evolve mode** and explicitly accepts a proposal. Do not "helpfully" apply an
+until the skill owner runs **evolve mode** and explicitly accepts a proposal. Do not "helpfully" apply an
 obvious fix directly to rubric.yaml during an audit. Do not score the audit you
 just ran against your own proposed changes — score against the current
 rubric.yaml only.
 
 ## Evolve mode
 
-Trigger: Kay says "evolve", "review proposals", "apply proposals", or invokes
+Trigger: the user says "evolve", "review proposals", "apply proposals", or invokes
 the skill with the evolve argument. Evolve mode never runs implicitly.
 
 ### Procedure
@@ -171,20 +171,20 @@ the skill with the evolve argument. Evolve mode never runs implicitly.
    ```
 
    Make a genuine recommendation for every proposal — never punt the analysis
-   to Kay — but the recommendation decides nothing.
-4. **Kay decides each proposal individually:** accept / reject / modify / defer
-   (modify = Kay states the change, you restate the amended diff, Kay confirms,
+   to the skill owner — but the recommendation decides nothing.
+4. **The skill owner decides each proposal individually:** accept / reject / modify / defer
+   (modify = the skill owner states the change, you restate the amended diff, the skill owner confirms,
    then it is treated as accepted-as-modified; defer = the entry STAYS in
    Pending — append to it `- **Deferred:** YYYY-MM-DD — <what evidence would
    decide it>` and take no other action on it this session).
 5. **Apply accepted proposals:**
    a. Edit the target file exactly per the (possibly amended) diff. For most
-      proposal types the target is `rubric.yaml`. When Kay accepts a
+      proposal types the target is `rubric.yaml`. When the skill owner accepts a
       `scoring-change` proposal, the target is `scoring.md` (formulas or the
       §4 history-JSON schema) OR rubric.yaml's `maturity_bands` block,
       whichever the proposal names; for
       a `new-mode` proposal, edit `SKILL.md`. These scoring/mode edits are
-      always MAJOR bumps and are permitted ONLY in evolve mode with Kay's
+      always MAJOR bumps and are permitted ONLY in evolve mode with the skill owner's
       explicit acceptance.
    b. Bump `rubric_version:` in rubric.yaml by semver. **This step is the
       normative semver policy — every other file's summary defers to it:**
@@ -205,7 +205,7 @@ the skill with the evolve argument. Evolve mode never runs implicitly.
    d. Move the applied entries from Pending to the "## Accepted" section of
       PROPOSALS.md. Each accepted entry keeps its original text verbatim plus
       three mandated lines:
-      - **Accepted:** YYYY-MM-DD by Kay
+      - **Accepted:** YYYY-MM-DD by the skill owner
       - **Applied in:** vX.Y.Z
       - **As modified:** <amended diff summary, or "as filed">
       (The changelog remains the permanent record of what changed.)
@@ -214,8 +214,8 @@ the skill with the evolve argument. Evolve mode never runs implicitly.
 6. **Move rejected proposals** from Pending to the Rejected section verbatim,
    appending two lines:
    ```
-   - **Rejected:** YYYY-MM-DD by Kay
-   - **Reason:** <Kay's reason, or the guardrail violated — specific enough
+   - **Rejected:** YYYY-MM-DD by the skill owner
+   - **Reason:** <the skill owner's reason, or the guardrail violated — specific enough
      that a future model knows what evidence would be needed to re-open it>
    ```
    Never delete rejected entries. They are the institutional memory that stops
@@ -260,4 +260,4 @@ The only genuine unknowns are checks whose meaning changed when the stored
 evidence is insufficient to rescore them — mark those "unknown — will apply
 from next audit" (as in step 3's impact analysis), never estimate them.
 Evolve mode never rewrites history/ files — the rescoring in impact analysis
-is presented to Kay for the decision, not persisted.
+is presented to the skill owner for the decision, not persisted.
