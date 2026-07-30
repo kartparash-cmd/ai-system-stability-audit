@@ -1,0 +1,1060 @@
+# rubric.yaml — versioned knowledge file for the ai-system-stability-audit skill
+#
+# This file is DATA, separate from the audit engine (SKILL.md). The engine reads
+# this file at audit time; evolving the rubric means editing this file (semver
+# bump + CHANGELOG.md entry), never the engine — with one exception: in evolve
+# mode, an accepted scoring-change proposal edits scoring.md and an accepted
+# new-mode proposal edits SKILL.md; both are always MAJOR bumps and happen only
+# with Kay's explicit acceptance.
+#
+# Semver policy (normative source: EVOLUTION.md step 5b):
+#   MAJOR = pillar weight changes, pillar restructuring, check
+#           removal/renumbering/meaning changes, scoring-formula or
+#           maturity-band changes, new modes, scoring-engine edits (accepted
+#           scoring-change and new-mode proposals edit scoring.md / SKILL.md
+#           and are always MAJOR)
+#   MINOR = new checks, check scope clarifications that change what earns
+#           points
+#   PATCH = evidence hints, wording, typos
+#
+# Scoring scale (applied by the engine, recorded here for reference):
+#   0 = absent | 1 = partial (exists but incomplete, untested, or not enforced)
+#   2 = present and enforced/wired in | N/A = argued exclusion (one-sentence
+#   justification required; excluded from denominator; never used to inflate)
+#
+# added_in: the rubric version in which the check first shipped.
+#           "1.0.0" = original v1 check (meaning preserved verbatim)
+#           "2.0.0" = new 2026-era check (carries a rationale field)
+
+rubric_version: "2.0.0"
+last_updated: "2026-07-29"
+
+# band = highest band whose min_percent <= rounded overall; determined from the
+# 1-decimal rounded value; top band includes 100
+maturity_bands:
+  - name: "Fragile"
+    min_percent: 0
+  - name: "Developing"
+    min_percent: 40
+  - name: "Production-Capable"
+    min_percent: 60
+  - name: "Production-Grade"
+    min_percent: 80
+
+pillars:
+
+  # ───────────────────────────────────────────────────────────────────────
+  - id: govern
+    name: "Govern"
+    weight: 20
+    description: >-
+      Controls that constrain what the system can do.
+    checks:
+      - id: G1
+        name: "Identity and access control"
+        description: >-
+          Requests are authenticated and authorized (RBAC or ABAC); the agent
+          cannot act with more privilege than the requesting user.
+        evidence_hints:
+          - "grep for auth middleware/decorators: 'requires_auth', '@login_required', 'verifyToken', 'authorize(', 'Depends(get_current_user)'"
+          - "RBAC/ABAC definitions: roles tables/enums, 'permissions', 'scopes', policy files (casbin, OPA/rego, cerbos)"
+          - "check whether agent tool calls carry the END USER's identity/token, not a god-mode service credential (grep 'service_role', 'admin_key', 'impersonat')"
+          - "API route definitions without any auth guard (unprotected FastAPI/Express/Next.js API routes)"
+          - "JWT/session handling: 'jwt.verify', 'getServerSession', 'supabase.auth'"
+        scoring_anchors: >-
+          0 = routes/entry points unauthenticated, or the agent acts on a
+          shared god-mode credential; 1 = authentication present but
+          authorization coarse (no roles/scopes enforced) or agent tool calls
+          run on a service credential instead of the end user's identity; 2 =
+          authn plus RBAC/ABAC enforced on every route AND tool calls carry
+          the end user's scoped identity/token.
+        added_in: "1.0.0"
+
+      - id: G2
+        name: "Policy enforcement point"
+        description: >-
+          A distinct place in code where policies/rules gate actions, separate
+          from the LLM prompt.
+        evidence_hints:
+          - "files/modules named policy, guard, gate, rules, enforcement: glob '**/policy*', '**/guard*', '**/rules*'"
+          - "code path between LLM output and action execution that can veto: grep 'is_allowed', 'check_policy', 'validate_action', 'deny'"
+          - "policy engines: OPA/rego files, casbin models, custom rule tables in DB migrations"
+          - "scoring anchors: prompt-text-only policies = 0; enforcement point exists but does not cover the tool-execution/action path = 1; covers it = 2"
+        scoring_anchors: >-
+          0 = policies live only in prompt text; 1 = a code enforcement point
+          exists but the tool-execution/action path can bypass it; 2 = every
+          action path passes through the enforcement point, which can veto
+          before execution.
+        added_in: "1.0.0"
+
+      - id: G3
+        name: "Approval gates"
+        description: >-
+          Risky or irreversible actions require explicit approval (human or
+          rule-based) before execution.
+        evidence_hints:
+          - "grep 'requires_approval', 'pending_approval', 'approve', 'confirmation', 'two_man', 'dry_run'"
+          - "state machines or DB status columns: 'PENDING_REVIEW', 'AWAITING_APPROVAL', 'approved_by'"
+          - "irreversible actions in tool definitions (send email, execute trade, delete, refund, pay) — check each for a gate upstream"
+          - "human-in-the-loop interrupts in agent frameworks: LangGraph 'interrupt', 'human_approval' nodes, Claude Agent SDK permission callbacks"
+          - "N/A only if no tool/action is risky or irreversible — enumerate every tool and argue each; a starter/template expected to grow tools scores 0 (not N/A) if no gate scaffold exists"
+        scoring_anchors: >-
+          0 = risky/irreversible actions execute with no gate (record what was
+          searched); 1 = a gate exists for only some risky actions, or is an
+          untested config flag with no state/approver recorded; 2 = every
+          enumerated risky action passes an approval gate (human or
+          rule-based) that records approver and status before execution.
+        added_in: "1.0.0"
+
+      - id: G4
+        name: "Immutable audit trail"
+        description: >-
+          Every decision logs inputs, retrieved context, model + version,
+          prompt version, output, and actor to an append-only or tamper-evident
+          store.
+        evidence_hints:
+          - "audit tables/migrations: 'audit_log', 'decision_log', 'events' with no UPDATE/DELETE paths; append-only constraints or triggers"
+          - "grep the log-write call sites for completeness: does the record include model id, prompt version, retrieved doc ids, actor?"
+          - "tamper-evidence: hash chains, WORM storage config, ledger services (QLDB, immudb), 'previous_hash'"
+          - "tracing platforms wired as system of record: LangSmith/Langfuse/Braintrust/OTel span exports with run metadata"
+          - "scoring anchors: persistent append-only with full fields (inputs, context, model+version, prompt version, output, actor) = 2; structured but volatile/incomplete event capture = 1; unstructured stdout logging = 0"
+        scoring_anchors: >-
+          0 = unstructured stdout logging only; 1 = structured but volatile or
+          incomplete event capture (missing model id, prompt version,
+          retrieved context, or actor); 2 = persistent
+          append-only/tamper-evident store recording inputs, retrieved
+          context, model + version, prompt version, output, and actor.
+        added_in: "1.0.0"
+
+      - id: G5
+        name: "Human override"
+        description: >-
+          A human can reverse or supersede any automated decision, and the
+          override is recorded.
+        evidence_hints:
+          - "grep 'override', 'supersede', 'manual_decision', 'reversed_by', 'overridden_by'"
+          - "admin UI routes or CLI commands that flip a decision's state and write who/when/why"
+          - "DB columns: 'overridden', 'override_reason', 'override_actor'"
+          - "check the override is itself audited (writes to the same audit trail as G4)"
+        scoring_anchors: >-
+          0 = no override mechanism found; 1 = a decision's state can be
+          flipped manually (admin route, CLI, raw SQL) but who/when/why is not
+          recorded; 2 = an override endpoint/command that records actor and
+          reason to the same audit trail as G4.
+        added_in: "1.0.0"
+
+      - id: G6
+        name: "Kill switch"
+        description: >-
+          A documented, tested way to halt the system (feature flag, env var,
+          circuit breaker) that handles in-flight work.
+        evidence_hints:
+          - "grep 'kill_switch', 'KILL', 'DISABLED', 'MAINTENANCE_MODE', 'circuit_breaker', 'emergency_stop', 'PAUSE'"
+          - "feature-flag SDKs: LaunchDarkly/Unleash/Flagsmith/statsig imports, or env-var checks at the top of the main loop"
+          - "in-flight handling: graceful shutdown hooks (SIGTERM handlers), queue drain logic, 'draining', job cancellation"
+          - "runbook/docs: glob '**/runbook*', '**/incident*', README sections on emergency stop; is it TESTED (a test file exercising the flag)?"
+        scoring_anchors: >-
+          0 = no halt mechanism short of redeploying; 1 = a flag/env var
+          exists but is untested or ignores in-flight work; 2 = documented AND
+          tested switch (a test file or runbook drill exercises it) with
+          in-flight handling (drain, cancel, or graceful shutdown).
+        added_in: "1.0.0"
+
+      - id: G7
+        name: "Secrets hygiene"
+        description: >-
+          Credentials in a vault or secret manager, never in code, prompts, or
+          logs.
+        evidence_hints:
+          - ".env files committed to git: 'git ls-files | grep -E \"\\.env\"'; check .gitignore covers .env*"
+          - "hardcoded key patterns: grep -rE 'sk-[a-zA-Z0-9]{20}|sk-ant-|AKIA[0-9A-Z]{16}|ghp_[a-zA-Z0-9]|xox[bp]-|-----BEGIN (RSA )?PRIVATE KEY'"
+          - "vault/secret-manager imports: 'boto3.*secretsmanager', 'SecretClient', 'google.cloud.secretmanager', 'vault', 'doppler', 'infisical', '1password'"
+          - "secrets leaking into prompts or logs: grep prompt templates and logger calls for env-var interpolation of keys"
+          - "CI config: secrets referenced via ${{ secrets.* }} vs. inlined values in .github/workflows, Dockerfiles, docker-compose"
+          - "scoring ceiling: gitignored .env with no committed/hardcoded keys but no vault/secret manager = 1; vault or secret manager wired in = 2"
+        scoring_anchors: >-
+          0 = keys committed to git, hardcoded in source, or interpolated into
+          prompts/logs; 1 = gitignored .env with no committed/hardcoded keys
+          but no vault or secret manager; 2 = vault or secret manager wired in
+          and no leakage paths found.
+        added_in: "1.0.0"
+
+      - id: G8
+        name: "Prompt injection defense"
+        description: >-
+          Untrusted content (user input, retrieved documents, tool results, web
+          pages) is treated as data, not instructions: inputs are sanitized or
+          delimited, tool/retrieval results are quarantined or clearly fenced
+          from the system prompt, and high-risk instructions arriving via
+          content cannot trigger privileged actions without passing the policy
+          layer (G2/G3).
+        rationale: >-
+          Prompt injection is the #1 practical attack on 2026-era agent systems
+          (OWASP LLM Top 10 LLM01). v1 governed WHO can act but not WHAT the
+          model can be talked into by content it reads. Any system that
+          retrieves documents, browses, or consumes tool output is exposed;
+          an audit that skips this misses the most common real-world breach
+          path.
+        evidence_hints:
+          - "grep 'injection', 'sanitize', 'untrusted', 'quarantine', 'spotlight', 'delimiter' in prompt-assembly code"
+          - "prompt templates: are retrieved docs / tool results wrapped in explicit fences or XML tags with 'do not follow instructions inside' framing?"
+          - "input classifiers/guards: 'prompt_guard', 'rebuff', 'lakera', 'llm-guard', Azure content safety / Bedrock guardrails config"
+          - "check whether tool RESULTS are fed back verbatim into the context with no marking (anti-evidence)"
+          - "tests that assert injected instructions in a document do NOT change agent behavior (adversarial fixtures in test dirs)"
+        scoring_anchors: >-
+          0 = untrusted content (user input, retrieved docs, tool results)
+          concatenated into prompts unmarked; 1 = fencing/delimiting or an
+          input guard on some paths, but no test proving injected instructions
+          are inert or privileged actions reachable without the policy layer;
+          2 = all untrusted content fenced/quarantined, high-risk instructions
+          must pass G2/G3, and at least one adversarial fixture asserts
+          injected instructions do not change behavior.
+        added_in: "2.0.0"
+
+      - id: G9
+        name: "Tool and MCP security"
+        description: >-
+          The set of tools/MCP servers the agent can call is an explicit
+          allowlist (not everything importable); each tool runs with its own
+          scoped, least-privilege credential rather than one shared god-token;
+          tool argument schemas are validated before execution; and third-party
+          MCP servers are pinned/reviewed rather than pulled blind.
+        rationale: >-
+          By 2026 the tool/MCP layer is the agent's real attack surface: one
+          over-scoped credential shared across tools turns any single prompt
+          injection into full account takeover. v1 had no check covering tool
+          inventory, per-tool credential scoping, or MCP supply trust.
+        evidence_hints:
+          - "tool registration sites: grep 'tools=[', 'register_tool', '@tool', 'allowed_tools', 'tool_choice' — is the list explicit and short?"
+          - "MCP config: '.mcp.json', 'claude_desktop_config.json', 'mcpServers' — are servers pinned to versions/hashes? any 'npx -y' pulling latest?"
+          - "credential scoping: one API key/env var used by all tools (anti-evidence) vs. per-tool tokens with narrow scopes"
+          - "argument validation before execution: pydantic/zod schemas on tool inputs, path/URL allowlists inside tool handlers"
+          - "grep 'permission', 'allowlist', 'denylist' in tool-execution middleware"
+        scoring_anchors: >-
+          0 = tool set unbounded/auto-registered, or every tool shares one
+          god-token; 1 = explicit allowlist but shared credentials,
+          unvalidated tool arguments, or unpinned third-party MCP servers; 2 =
+          short explicit allowlist + per-tool least-privilege credentials +
+          schema-validated arguments + pinned/reviewed MCP servers.
+        added_in: "2.0.0"
+
+      - id: G10
+        name: "Agent execution sandboxing"
+        description: >-
+          Code, shell commands, or file operations executed on the agent's
+          behalf run inside an isolation boundary (container, microVM, jail, or
+          restricted subprocess) with filesystem scoping and network egress
+          controls — the agent cannot read arbitrary host paths or exfiltrate
+          to arbitrary hosts.
+        rationale: >-
+          Code-executing agents went mainstream after v1 was written; the
+          difference between 'agent runs code in a Firecracker VM with no
+          egress' and 'agent runs subprocess.run on the host' is the
+          difference between a contained failure and a compromised machine.
+        evidence_hints:
+          - "grep 'subprocess', 'exec(', 'eval(', 'os.system', 'child_process' — then check what wraps them"
+          - "isolation tech: Dockerfile/docker run flags ('--network=none', '--read-only', 'seccomp'), 'firecracker', 'gvisor', 'e2b', 'modal', 'daytona', 'vercel sandbox', 'nsjail', 'bubblewrap'"
+          - "filesystem scoping: chroot, allowed-path checks ('startswith(WORKSPACE)'), temp-dir confinement"
+          - "network egress: proxy allowlists, 'NO_PROXY', firewall/egress rules in IaC, blocked domains config"
+          - "N/A is legitimate ONLY if the agent never executes code/shell/file writes — verify by grepping tool definitions first"
+        scoring_anchors: >-
+          0 = agent-triggered code/shell/file operations run raw on the host
+          (naked subprocess/exec); 1 = partial isolation — container without
+          network egress or filesystem restriction, or path allowlist checks
+          only; 2 = an isolation boundary (container/microVM/jail) with both
+          filesystem scoping and network egress control. N/A only if the agent
+          never executes code/shell/file writes.
+        added_in: "2.0.0"
+
+  # ───────────────────────────────────────────────────────────────────────
+  - id: prove
+    name: "Prove"
+    weight: 20
+    description: >-
+      Evidence that the system works, continuously.
+    checks:
+      - id: P1
+        name: "Golden test set"
+        description: >-
+          A versioned set of input/expected-output pairs run against the
+          system.
+        evidence_hints:
+          - "glob '**/golden*', '**/eval*', '**/fixtures/**', '**/testdata/**', '**/*.jsonl' in test/eval dirs"
+          - "eval framework configs: 'promptfoo', 'braintrust', 'langsmith', 'deepeval', 'ragas', 'inspect_ai', 'openai evals'"
+          - "check the set is VERSIONED (in git or a registry with revisions), not a one-off notebook"
+          - "a runner that executes the set end-to-end against the real pipeline: grep 'run_evals', 'eval(' in scripts/, Makefile targets"
+          - "scoring ceiling: eval sets that only ever run against a mock/stub model score at most 1; 2 requires the harness to run provider-parameterized against a real model path"
+        scoring_anchors: >-
+          0 = no input/expected-output set exists; 1 = a set exists but is
+          unversioned, a one-off notebook, or runs only against a mock/stub
+          model; 2 = a versioned set with a runner that executes it end-to-end
+          against the real model path.
+        added_in: "1.0.0"
+
+      - id: P2
+        name: "Deterministic checks"
+        description: >-
+          Exact-match or rule-based assertions on outputs (format, required
+          fields, forbidden content).
+        evidence_hints:
+          - "grep 'assert', 'expect(', 'schema.parse', 'validate' applied to MODEL OUTPUTS (not just unit tests of utils)"
+          - "format assertions: JSON schema validation of responses, regex checks, required-field checks"
+          - "forbidden-content rules: denylist/regex scans on outputs ('profanity', 'pii', 'forbidden', 'must_not_contain')"
+          - "promptfoo/deepeval assertion types: 'contains', 'equals', 'is-json', 'regex' in eval config files"
+          - "read the eval runner's pass/fail logic directly — assertions may be plain boolean comparisons feeding an exit code, not assert statements; grep 'passed', 'expect_', 'exit'"
+        scoring_anchors: >-
+          0 = no assertions on model outputs; format assertions only = 1;
+          format + forbidden-content checks wired into a runner with pass/fail
+          exit = 2.
+        added_in: "1.0.0"
+
+      - id: P3
+        name: "LLM-as-judge evals"
+        description: >-
+          Subjective quality (tone, helpfulness, groundedness) scored by a
+          judge model, with the judge's rubric versioned.
+        evidence_hints:
+          - "grep 'judge', 'grader', 'llm_as_judge', 'model_graded', 'critique', 'score_response'"
+          - "judge prompt files: glob '**/judge*.txt', '**/grader*', rubric text checked into git (versioned)"
+          - "eval-framework judge assertions: promptfoo 'llm-rubric', deepeval 'GEval', ragas 'faithfulness/answer_relevancy'"
+          - "check the judge RUBRIC is a versioned artifact, not an inline string regenerated ad hoc"
+        scoring_anchors: >-
+          0 = no judge-model evals; 1 = judge scoring exists but the rubric is
+          an ad-hoc inline string (unversioned) or scores are never
+          recorded/used; 2 = judge evals with the rubric checked in as a
+          versioned artifact and scores recorded per run.
+        added_in: "1.0.0"
+
+      - id: P4
+        name: "Outcome evaluation"
+        description: >-
+          Tracking whether requests were actually resolved (task success rate,
+          deflection rate, resolution time).
+        evidence_hints:
+          - "grep 'resolved', 'resolution', 'deflect', 'task_success', 'success_rate', 'csat', 'thumbs'"
+          - "DB columns/events tracking terminal outcomes per request/case, not just per-call latency"
+          - "dashboards/queries: SQL files, Metabase/Grafana configs computing resolution or success rates"
+          - "distinguish from P2/P3: this is about REAL requests in production being resolved, not offline eval scores"
+        scoring_anchors: >-
+          0 = no terminal outcome tracked per real request/case; 1 = an
+          outcome signal is captured (resolved column, thumbs) but no rate is
+          computed or visible; 2 = resolution/success/deflection rate computed
+          from production requests and visible (query, dashboard, or report).
+        added_in: "1.0.0"
+
+      - id: P5
+        name: "Drift monitoring"
+        description: >-
+          Detection for source-data drift, model-version drift, embedding
+          drift, and query-pattern drift.
+        evidence_hints:
+          - "grep 'drift', 'distribution', 'kl_divergence', 'psi', 'embedding_drift', 'anomaly'"
+          - "monitoring libs: 'evidently', 'whylogs', 'arize', 'fiddler', 'nannyml' imports or configs"
+          - "model-version drift: alerts/logs when provider model id changes ('model_version', pinned model ids compared at runtime)"
+          - "scheduled jobs comparing current vs. baseline distributions (cron/Airflow/dagster tasks named drift/monitor)"
+        scoring_anchors: >-
+          0 = no drift detection of any kind; 1 = one drift class monitored,
+          or ad-hoc comparison scripts with no schedule or alert; 2 =
+          scheduled jobs comparing current vs. baseline distributions with
+          alerting, covering at least source-data and model-version drift.
+        added_in: "1.0.0"
+
+      - id: P6
+        name: "Regression benchmark"
+        description: >-
+          Evals run automatically (CI or scheduled/nightly) with an alert
+          threshold, not only manually.
+        evidence_hints:
+          - ".github/workflows/*.yml (or GitLab/Circle config) with eval steps: grep 'eval', 'promptfoo', 'benchmark' in CI files"
+          - "scheduled triggers: 'schedule:', 'cron:' in CI, or scheduler jobs (Airflow/dagster/cloud scheduler) running eval suites"
+          - "threshold gates: 'fail if score <', 'min_score', 'threshold', exit-nonzero-on-regression logic"
+          - "alert wiring: Slack/PagerDuty/webhook notifications on eval failure"
+        scoring_anchors: >-
+          0 = evals run manually only; 1 = evals wired into CI or a schedule
+          but with no threshold gate or alert on regression; 2 = automated
+          evals with a fail/alert threshold (exit-nonzero or notification)
+          wired to a real destination.
+        added_in: "1.0.0"
+
+      - id: P7
+        name: "Cost tracking"
+        description: >-
+          Per-request or per-case token/dollar cost is measured and visible.
+        evidence_hints:
+          - "grep 'usage', 'input_tokens', 'output_tokens', 'prompt_tokens', 'completion_tokens', 'cost', 'spend'"
+          - "cost persisted per request/case (DB column, metric label), not just aggregate billing"
+          - "gateway-level tracking: LiteLLM/Helicone/OpenRouter/Portkey cost headers or dashboards configured"
+          - "visibility: a dashboard, report, or budget alert consuming the cost data (grep 'budget', 'cost_alert')"
+        scoring_anchors: >-
+          0 = token/cost usage not captured at all; 1 = token counts logged
+          but no per-request/per-case dollar rollup or visibility; 2 =
+          per-request or per-case cost persisted and visible (dashboard,
+          report, or budget alert).
+        added_in: "1.0.0"
+
+      - id: P8
+        name: "Adversarial and safety evals"
+        description: >-
+          The eval suite includes adversarial cases — prompt-injection
+          attempts, jailbreaks, PII-extraction probes, and out-of-policy
+          requests — run with the same automation and thresholds as quality
+          evals, so safety regressions are caught before deploy, not by users.
+        rationale: >-
+          v1 proved the happy path works; 2026 systems also need proof the
+          system resists attack. Model or prompt upgrades routinely regress
+          injection resistance silently — without adversarial cases in the
+          regression suite (P6), the G8 defenses are unverified claims.
+        evidence_hints:
+          - "glob '**/redteam*', '**/adversarial*', '**/jailbreak*', '**/attack*' in eval/test dirs"
+          - "promptfoo 'redteam' config blocks, garak configs, PyRIT scripts, 'giskard' scans"
+          - "eval fixtures containing injection payloads ('ignore previous instructions', 'system prompt', exfil URLs)"
+          - "safety assertions: outputs checked for policy refusal on out-of-scope asks; PII-leak checks on responses"
+          - "wired into CI/schedule with thresholds (same evidence style as P6) — a one-time red-team doc alone scores at most 1"
+          - "the bar for a doc scoring 1: documented adversarial analysis or executed attack transcript targeting THIS system scores 1; a generic security TODO list scores 0"
+        scoring_anchors: >-
+          0 = no adversarial cases anywhere (a generic security TODO list
+          scores 0); 1 = documented adversarial analysis or a one-time
+          executed attack transcript targeting THIS system, not automated; 2 =
+          adversarial/safety cases run in the same automated suite and
+          thresholds as P6.
+        added_in: "2.0.0"
+
+  # ───────────────────────────────────────────────────────────────────────
+  - id: context_data
+    name: "Context & Data"
+    weight: 12
+    description: >-
+      How knowledge enters and stays trustworthy.
+    checks:
+      - id: C1
+        name: "Single ingestion path"
+        description: >-
+          A defined pipeline for documents/data entering the knowledge layer
+          (not ad hoc scripts).
+        evidence_hints:
+          - "glob '**/ingest*', '**/pipeline*', '**/etl*', '**/loader*' — one coherent module vs. scattered scripts/"
+          - "pipeline frameworks: Airflow DAGs, dagster assets, prefect flows, temporal workflows for ingestion"
+          - "grep for multiple competing write paths to the index/vector store ('.add(', '.upsert(', 'index(' call sites) — many uncoordinated writers is anti-evidence"
+          - "chunking/embedding config centralized (one place defining chunk size, embed model) vs. duplicated per script"
+        scoring_anchors: >-
+          0 = ad hoc scattered scripts each writing to the index/vector store;
+          1 = a main pipeline exists but side scripts also write, or
+          chunking/embedding config is duplicated per script; 2 = one coherent
+          pipeline is the only writer, with chunking/embedding config
+          centralized.
+        added_in: "1.0.0"
+
+      - id: C2
+        name: "Permissions-aware retrieval"
+        description: >-
+          Access control enforced at index or retrieval time, so users can
+          never retrieve content they aren't entitled to.
+        evidence_hints:
+          - "retrieval call sites: do queries carry a user/tenant filter? grep '.query(', 'similarity_search', 'retriever' for 'filter', 'tenant_id', 'user_id', 'acl'"
+          - "index metadata: documents stored with permission/group/tenant fields (check ingestion code and index schema)"
+          - "row-level security: Supabase/Postgres RLS policies on document tables ('CREATE POLICY', 'auth.uid()')"
+          - "ANTI-EVIDENCE: one global index queried identically for all users in a multi-user system — score 0"
+        scoring_anchors: >-
+          0 = one global index queried identically for all users in a
+          multi-user system; 1 = permission metadata stored or filters applied
+          on some retrieval paths but bypassable or incomplete; 2 = every
+          retrieval call carries the user's/tenant's scope filter, or
+          row-level security enforces it at the store.
+        added_in: "1.0.0"
+
+      - id: C3
+        name: "Freshness mechanism"
+        description: >-
+          Source changes propagate to the index (webhooks, scheduled re-index,
+          TTL) with a known staleness bound.
+        evidence_hints:
+          - "grep 'webhook', 'reindex', 're_index', 'refresh', 'sync', 'ttl', 'stale', 'last_synced'"
+          - "scheduled re-index jobs: cron entries, CI schedules, Airflow/dagster schedules touching the ingestion path"
+          - "change detection: content hashes, 'updated_at' comparisons, upsert-by-source-id logic"
+          - "a STATED staleness bound in docs/config ('index is at most N hours behind') — mechanism without a bound is partial"
+        scoring_anchors: >-
+          0 = no propagation mechanism — index refreshed only by manual
+          re-runs; 1 = a mechanism exists (cron, webhook, upsert-by-source-id)
+          but no stated staleness bound; 2 = mechanism plus a stated bound in
+          docs/config ('index is at most N hours behind').
+        added_in: "1.0.0"
+
+      - id: C4
+        name: "Retrieval quality measurement"
+        description: >-
+          Recall/precision@k or equivalent measured on a labeled set, not
+          assumed.
+        evidence_hints:
+          - "grep 'recall', 'precision', 'ndcg', 'mrr', 'hit_rate', 'retrieval_eval', 'context_recall'"
+          - "labeled retrieval sets: query→relevant-doc-id pairs in fixtures/JSONL"
+          - "ragas 'context_precision/context_recall', trulens, or custom retrieval eval scripts"
+          - "results recorded somewhere (report, CI artifact, dashboard) — an unused script scores 1"
+        scoring_anchors: >-
+          0 = no labeled retrieval set and no metrics; 1 = a labeled set or
+          eval script exists but is unused or results are not recorded; 2 =
+          recall/precision@k (or equivalent) measured on a labeled set with
+          results recorded (CI artifact, report, or dashboard).
+        added_in: "1.0.0"
+
+      - id: C5
+        name: "Empty-retrieval handling"
+        description: >-
+          Defined behavior when retrieval returns nothing relevant (refuse or
+          escalate, never fabricate).
+        evidence_hints:
+          - "grep the post-retrieval code path for empty/low-score branches: 'if not docs', 'len(results) == 0', 'no_context', 'score < '"
+          - "explicit refusal/escalation responses: \"I don't have information\", 'escalate', 'fallback_response'"
+          - "similarity-score floor before docs are used (min relevance threshold config)"
+          - "prompt-only mitigation ('if no context say you don't know') without a code branch is partial"
+          - "tests covering the empty-retrieval case"
+        scoring_anchors: >-
+          0 = no empty/low-score branch — the model answers regardless of
+          retrieval; 1 = prompt-only mitigation, or a code branch with a
+          hardcoded threshold and no tests; 2 = a code branch that refuses or
+          escalates on empty/low-score retrieval, with a configurable
+          threshold and a test covering the branch.
+        added_in: "1.0.0"
+
+      - id: C6
+        name: "Memory and context hygiene"
+        description: >-
+          Persistent agent memory and assembled context windows are governed:
+          PII is minimized/redacted before being written to long-term memory,
+          memory entries have ownership and TTL/expiry or deletion paths (user
+          data can be purged on request), and context assembly does not leak
+          one user's or tenant's data into another's window (no shared
+          scratchpads or cross-session carryover across trust boundaries).
+        rationale: >-
+          2026 agents persist memories and pack huge context windows; v1
+          governed the INDEX (C2) but not the memory store or the assembled
+          context. Cross-tenant leakage via shared memory and un-deletable PII
+          in agent memory are now common audit findings and GDPR exposure.
+        evidence_hints:
+          - "memory stores: grep 'memory', 'remember', 'mem0', 'zep', 'letta', 'checkpointer', 'conversation_history' — then check what scopes them (user_id/tenant_id keys?)"
+          - "PII handling before persistence: 'redact', 'anonymize', 'presidio', 'scrub', 'pii' in memory-write paths"
+          - "deletion/expiry: TTL config on memory records, 'delete_memory', 'purge', GDPR/right-to-erasure endpoints"
+          - "context assembly: the code that builds the prompt — does it pull ONLY from the requesting user's sessions/memories?"
+          - "caches or scratch files shared across users (anti-evidence): global conversation buffers, shared temp dirs keyed by nothing"
+        scoring_anchors: >-
+          0 = memory shared/unscoped across users or tenants, or PII persisted
+          raw with no deletion path; 1 = memory scoped per user/tenant but
+          missing TTL/purge paths or PII redaction before persistence; 2 =
+          scoped memory + PII minimization/redaction before writes + working
+          deletion/expiry path, and context assembly pulls only from the
+          requesting user's data.
+        added_in: "2.0.0"
+
+  # ───────────────────────────────────────────────────────────────────────
+  - id: decision_engine
+    name: "Decision Engine"
+    weight: 14
+    description: >-
+      How the AI decides, and how uncertainty is handled.
+    checks:
+      - id: D1
+        name: "Staged flow"
+        description: >-
+          The request pipeline has distinct, testable stages (e.g., detect,
+          enrich, reason, classify, decide, act), not one monolithic prompt.
+        evidence_hints:
+          - "pipeline/graph definitions: LangGraph nodes/edges, step functions, 'pipeline = [', chain composition, temporal activities"
+          - "separate modules per stage: glob '**/classify*', '**/enrich*', '**/route*', '**/decide*'"
+          - "per-stage tests: unit tests importing a single stage in isolation"
+          - "ANTI-EVIDENCE: one giant prompt template doing detection+reasoning+action selection in a single call"
+        scoring_anchors: >-
+          0 = one monolithic prompt performs detection, reasoning, and action
+          selection in a single call; 1 = distinct stages exist but are not
+          independently testable (no per-stage tests, entangled modules); 2 =
+          distinct stages with per-stage unit tests importing each stage in
+          isolation.
+        added_in: "1.0.0"
+
+      - id: D2
+        name: "Confidence scoring"
+        description: >-
+          A computed confidence signal (logprobs, retrieval similarity,
+          self-consistency, or judge score) attached to outputs.
+        evidence_hints:
+          - "grep 'confidence', 'logprob', 'certainty', 'score', 'self_consistency'"
+          - "retrieval similarity carried forward onto the final answer object (not discarded after ranking)"
+          - "output schemas/DB columns containing a confidence field that is COMPUTED, not model-self-reported prose"
+          - "multiple-sample voting or judge-scored confidence in the decision path"
+        scoring_anchors: >-
+          0 = no computed confidence signal anywhere; 1 = a signal is computed
+          (retrieval similarity, logprobs, votes) but discarded before the
+          final output object; 2 = a computed confidence attached to outputs
+          and available downstream (schema field, DB column).
+        added_in: "1.0.0"
+
+      - id: D3
+        name: "Low-confidence routing"
+        description: >-
+          Outputs below threshold route to human review automatically; the
+          threshold is configurable, not hardcoded.
+        evidence_hints:
+          - "grep 'threshold', 'route', 'escalate', 'human_review', 'needs_review' near confidence checks"
+          - "threshold sourced from config/env/DB ('CONFIDENCE_THRESHOLD', settings field) vs. magic number inline (hardcoded = partial)"
+          - "the routing target actually exists: flagged items written to a queue/table the review UI reads (cross-check O1)"
+          - "tests exercising the below-threshold branch"
+        scoring_anchors: >-
+          0 = no below-threshold routing exists; 1 = routing exists but the
+          threshold is a hardcoded magic number, or the routing target
+          queue/table does not actually exist; 2 = configurable threshold
+          (config/env/DB) routing to a real review queue (cross-check O1),
+          with the below-threshold branch tested.
+        added_in: "1.0.0"
+
+      - id: D4
+        name: "Grounding and citation"
+        description: >-
+          Answers reference their sources; groundedness is checkable.
+        evidence_hints:
+          - "grep 'citation', 'source', 'reference', 'doc_id', 'chunk_id' in response schemas and prompt templates"
+          - "response objects carrying source ids/URLs alongside the answer (API types, DB columns)"
+          - "groundedness checks: ragas 'faithfulness', judge prompts scoring 'supported by context', 'hallucination' detectors"
+          - "UI rendering of sources (frontend components named Citation/Source) as corroboration"
+        scoring_anchors: >-
+          0 = answers carry no source references; 1 = citations
+          rendered/attached but groundedness never checked; 2 = sources
+          attached to answers AND a groundedness check runs (faithfulness
+          metric, judge scoring 'supported by context', or hallucination
+          detector).
+        added_in: "1.0.0"
+
+      - id: D5
+        name: "Loop and budget guards"
+        description: >-
+          Max iterations, max tokens, and timeouts prevent runaway agent loops.
+        evidence_hints:
+          - "grep 'max_iterations', 'max_steps', 'max_turns', 'recursion_limit', 'max_tokens', 'budget'"
+          - "timeouts on model/tool calls: 'timeout', 'deadline', 'signal.alarm', AbortController, httpx timeout params"
+          - "cost/token budget per request enforced in code (accumulator compared to a cap, not just logged)"
+          - "framework limits: LangGraph 'recursion_limit', agent 'max_execution_time' actually set (defaults left implicit = partial)"
+        scoring_anchors: >-
+          0 = no iteration, token, or timeout limits set on agent/model loops;
+          1 = some limits set, or framework defaults left implicit; 2 = max
+          iterations/steps, token or cost cap, and call timeouts all
+          explicitly set and enforced in code.
+        added_in: "1.0.0"
+
+      - id: D6
+        name: "Prompt versioning"
+        description: >-
+          Prompts are versioned artifacts (files/registry), not inline strings
+          scattered through code.
+        evidence_hints:
+          - "prompt directories: glob '**/prompts/**' (.txt/.md/.yaml/.jinja files under version control)"
+          - "prompt registries: LangSmith hub, Braintrust, promptlayer, 'prompt_version' identifiers logged with each call (cross-check G4)"
+          - "grep for long f-strings/template literals with role instructions inline in .py/.ts business logic (anti-evidence)"
+          - "a version/hash of the prompt recorded at call time so outputs are attributable to a prompt revision"
+        scoring_anchors: >-
+          0 = prompts are inline strings scattered through business logic; 1 =
+          prompts live in files/a registry but no version or hash is recorded
+          at call time; 2 = versioned prompt artifacts with the prompt
+          version/hash logged on each call (cross-check G4).
+        added_in: "1.0.0"
+
+      - id: D7
+        name: "Structured output validation"
+        description: >-
+          Model outputs that downstream code consumes are schema-validated
+          (JSON schema, pydantic/zod, function-call signatures) with a defined
+          repair-or-reject path on validation failure — malformed model output
+          can never flow raw into business logic, a database, or a tool call.
+        rationale: >-
+          Nearly every 2026 pipeline consumes model output programmatically;
+          unvalidated JSON.parse of model text is a top source of silent
+          production corruption and an injection vector into downstream
+          systems. v1's P2 covers eval-time assertions; this covers the
+          RUNTIME contract on every request.
+        evidence_hints:
+          - "grep 'pydantic', 'BaseModel', 'zod', 'z.object', 'response_format', 'json_schema', 'structured_output', 'instructor', 'outlines'"
+          - "parse sites: 'json.loads', 'JSON.parse' on model text — wrapped in validation + try/except with retry/repair, or naked (anti-evidence)?"
+          - "repair path: 'retry', 'reask', 'fix_json', validation-failure branch that re-prompts or rejects rather than proceeding"
+          - "tool-call argument validation before execution (overlaps G9 evidence; score the parsing contract here)"
+          - "enum/range constraints on decision fields (not just 'is it JSON' but 'is the verdict one of the allowed values')"
+        scoring_anchors: >-
+          0 = naked json.loads/JSON.parse of model text flows into business
+          logic, a database, or a tool call; 1 = schema validation on some
+          consumed outputs, or validation with no repair-or-reject path on
+          failure; 2 = every programmatically consumed output is
+          schema-validated with a defined retry/repair-or-reject branch,
+          including enum/range constraints on decision fields.
+        added_in: "2.0.0"
+
+  # ───────────────────────────────────────────────────────────────────────
+  - id: orchestration_humans
+    name: "Orchestration & Humans"
+    weight: 10
+    description: >-
+      What happens around the AI.
+    checks:
+      - id: O1
+        name: "Human-in-the-loop queue"
+        description: >-
+          A real queue/worklist where flagged cases land, with the context a
+          reviewer needs (answer, sources, confidence).
+        evidence_hints:
+          - "review tables/models: 'review_queue', 'worklist', 'cases', 'flagged' in migrations/schemas"
+          - "reviewer UI: routes/components named review/queue/inbox rendering answer + sources + confidence together"
+          - "check the queue record schema actually contains the reviewer context (answer, retrieved sources, confidence score)"
+          - "assignment/claim logic: 'assigned_to', 'claimed_by', status transitions"
+        scoring_anchors: >-
+          0 = no queue/worklist for flagged cases; 1 = flagged items land in a
+          table/queue but the record lacks reviewer context (answer + sources
+          + confidence) or there is no reviewer surface; 2 = a real queue
+          whose records carry the full reviewer context, with assignment/claim
+          and status transitions.
+        added_in: "1.0.0"
+
+      - id: O2
+        name: "Escalation path"
+        description: >-
+          Unresolved or disputed cases move to a defined next level; no dead
+          ends.
+        evidence_hints:
+          - "grep 'escalate', 'tier', 'level', 'sla_breach', 'reassign'"
+          - "state machines with a terminal-safe design: every non-resolved state has an outgoing transition"
+          - "time-based escalation: cron/worker checking age of open cases and bumping them"
+          - "docs defining who/what is level 2+ (runbooks, ownership files)"
+        scoring_anchors: >-
+          0 = dead ends — unresolved or disputed cases have no defined next
+          level; 1 = a single escalation hop (e.g. an email) with no tracking,
+          SLA, or ownership; 2 = a defined multi-level path with state
+          transitions, time/SLA-based escalation, and documented ownership of
+          level 2+.
+        added_in: "1.0.0"
+
+      - id: O3
+        name: "Feedback capture"
+        description: >-
+          Users can flag wrong/stale answers, and flags have a tracked
+          lifecycle (open, in review, resolved, notified).
+        evidence_hints:
+          - "feedback endpoints/UI: 'feedback', 'flag', 'report', 'thumbs_down' routes and components"
+          - "flag lifecycle: status enum/columns ('open', 'in_review', 'resolved') with transition code, not a fire-and-forget log"
+          - "grep 'notified', 'notify_reporter' — is the flagger told the outcome?"
+          - "feedback linked to the specific answer/run id it concerns"
+        scoring_anchors: >-
+          0 = users have no way to flag wrong/stale answers; 1 = flags are
+          captured fire-and-forget (stored rows with no lifecycle states); 2 =
+          flags with a tracked lifecycle (open, in review, resolved) linked to
+          the specific answer/run id, and the reporter is notified of the
+          outcome.
+        added_in: "1.0.0"
+
+      - id: O4
+        name: "Human decisions feed back"
+        description: >-
+          Review outcomes are stored in a form usable for eval sets or
+          retraining.
+        evidence_hints:
+          - "review outcomes persisted with structure: corrected answer, verdict labels, reason codes (not free-text only)"
+          - "grep 'to_eval', 'export', 'training_data', 'dataset' in review-completion code paths"
+          - "scripts/jobs converting review outcomes into eval fixtures (cross-check P1 sources)"
+          - "schema compatibility: review-outcome shape matches the golden-set shape"
+        scoring_anchors: >-
+          0 = review outcomes are never stored or never reused; 1 = outcomes
+          stored but in a shape unusable for evals (free-text only) or with no
+          consumer; 2 = outcomes stored structured (verdict labels, corrected
+          answers) and a script/job feeds them into eval sets (cross-check
+          P1).
+        added_in: "1.0.0"
+
+      - id: O5
+        name: "Notifications"
+        description: >-
+          Stakeholders are informed of failures, SLA risk, and resolved flags.
+        evidence_hints:
+          - "grep 'slack', 'webhook', 'sendgrid', 'resend', 'twilio', 'pagerduty', 'opsgenie', 'notify'"
+          - "notification triggers tied to the three events: failures/errors, SLA-age thresholds, flag resolution"
+          - "alert rules in monitoring config (Grafana/CloudWatch alarms) routed to a human channel"
+          - "check notifications are wired to real destinations (env var for webhook URL present in config surface), not stubbed"
+        scoring_anchors: >-
+          0 = no notifications wired anywhere; 1 = only one event class
+          notifies (e.g. 5xx errors only), or destinations are
+          stubbed/unconfigured; 2 = failures, SLA risk, and flag resolution
+          all notify a real configured destination.
+        added_in: "1.0.0"
+
+  # ───────────────────────────────────────────────────────────────────────
+  - id: shared_platform
+    name: "Shared Platform"
+    weight: 10
+    description: >-
+      Infrastructure that keeps the system swappable and observable.
+    checks:
+      - id: S1
+        name: "LLM gateway"
+        description: >-
+          Model calls go through one abstraction that handles routing,
+          fallback, retries, and rate limits; swapping models touches one
+          place.
+        evidence_hints:
+          - "gateway libs/services: 'litellm', 'openrouter', 'portkey', 'helicone', 'ai gateway', or a single internal llm_client module"
+          - "count direct SDK call sites: grep 'anthropic.', 'openai.', 'client.messages.create', 'chat.completions.create' outside the gateway module — many scattered call sites is anti-evidence"
+          - "model id sourced from config in ONE place vs. hardcoded per call site"
+          - "retry/rate-limit/fallback options set on the gateway (grep 'fallbacks', 'num_retries', 'rpm', 'rate_limit')"
+        scoring_anchors: >-
+          0 = direct SDK calls scattered across many call sites with per-site
+          model ids; 1 = a gateway/client module exists but call sites bypass
+          it, or model id/config is duplicated; 2 = all model calls go through
+          one gateway with retries/rate limits/fallback configured and the
+          model id sourced from one place.
+        added_in: "1.0.0"
+
+      - id: S2
+        name: "Provider outage handling"
+        description: >-
+          Defined fallback behavior when the primary model provider fails.
+        evidence_hints:
+          - "grep 'fallback', 'secondary', 'backup_model', 'failover' in the LLM call path"
+          - "multi-provider config: more than one provider credentialed and reachable in the routing config"
+          - "degraded-mode behavior: cached/static responses, queue-and-retry-later, or explicit user-facing outage message in code"
+          - "tests or chaos scripts simulating provider 5xx/timeout"
+        scoring_anchors: >-
+          0 = no fallback behavior — a provider failure surfaces as a raw
+          error; 1 = retries on the primary only, with no secondary provider
+          and no degraded mode; 2 = a configured secondary provider or
+          explicit degraded-mode behavior (cached/static response,
+          queue-and-retry, outage message), exercised by a test or chaos
+          script.
+        added_in: "1.0.0"
+
+      - id: S3
+        name: "Cache with scope control"
+        description: >-
+          If responses are cached, cache keys include user permission scope,
+          and invalidation is tied to source changes.
+        evidence_hints:
+          - "grep 'cache', 'redis', 'lru_cache', 'semantic_cache', 'gptcache' in the response path"
+          - "cache KEY construction: does it include user/tenant/permission scope? (key = hash(prompt) alone in a multi-user system is anti-evidence)"
+          - "invalidation wired to ingestion/source updates: 'invalidate', 'cache.delete' called from the C3 freshness path"
+          - "N/A only if genuinely no response caching exists anywhere (verify before accepting)"
+        scoring_anchors: >-
+          0 = response caching exists with keys that ignore user/permission
+          scope in a multi-user system; 1 = keys scoped but invalidation not
+          tied to source changes (or invalidation wired but keys unscoped); 2
+          = cache keys include user/tenant permission scope AND invalidation
+          is wired to the ingestion/freshness path (C3). N/A only if no
+          response caching exists anywhere.
+        added_in: "1.0.0"
+
+      - id: S4
+        name: "Observability"
+        description: >-
+          Structured logs, traces across the request flow, and metrics
+          (latency percentiles, error rate) exist and are queryable.
+        evidence_hints:
+          - "structured logging: 'structlog', 'pino', 'winston', 'zerolog', JSON log formatters (print/console.log only = partial at best)"
+          - "tracing: 'opentelemetry', 'trace_id', 'span', LangSmith/Langfuse/Sentry SDK init with propagation across stages"
+          - "metrics: 'prometheus', 'statsd', 'datadog', histogram/percentile metrics for latency; error-rate counters"
+          - "queryability: dashboards/config for Grafana, Datadog, CloudWatch, or a hosted tracing UI"
+        scoring_anchors: >-
+          0 = print/console.log only; 1 = structured logs but no cross-stage
+          traces or no latency/error metrics; 2 = structured logs + traces
+          across the request flow + latency percentile and error-rate metrics,
+          queryable in a dashboard or tracing UI.
+        added_in: "1.0.0"
+
+      - id: S5
+        name: "Async backbone"
+        description: >-
+          Long-running work goes through a queue/worker pattern rather than
+          blocking request threads.
+        evidence_hints:
+          - "queue/worker infra: 'celery', 'bullmq', 'sidekiq', 'rq', 'sqs', 'pubsub', 'temporal', 'inngest', 'trigger.dev', 'kafka'"
+          - "worker entrypoints: Procfile/PM2/k8s deployments defining separate worker processes"
+          - "long tasks (ingestion, batch evals, agent runs) dispatched as jobs vs. awaited inside HTTP handlers (grep request handlers for multi-minute work inline)"
+          - "job status polling/webhook pattern for clients ('job_id', 'status' endpoints)"
+        scoring_anchors: >-
+          0 = long-running work (ingestion, batch evals, agent runs) executes
+          inline in request handlers; 1 = a queue exists but some long tasks
+          still block requests, or no separate worker process is defined; 2 =
+          queue/worker pattern for all long-running work, with a job-status
+          (poll or webhook) pattern for clients.
+        added_in: "1.0.0"
+
+      - id: S6
+        name: "Supply chain integrity"
+        description: >-
+          Models and dependencies are pinned and provenance-checked: exact
+          model ids (not floating aliases like 'latest') in production config,
+          locked dependency versions (lockfiles committed), pinned base images
+          and CI actions, and integrity verification (hashes/signatures) for
+          downloaded model weights or third-party artifacts.
+        rationale: >-
+          A floating 'latest' model alias silently changes system behavior
+          under your feet — invalidating every eval score — and unpinned
+          dependencies/MCP packages are the delivery vehicle for the agent
+          supply-chain attacks seen through 2025-2026. v1 had no supply-chain
+          check at all.
+        evidence_hints:
+          - "model pinning: grep model id configs for dated/exact ids vs. aliases ('latest', unversioned names) in PRODUCTION config"
+          - "lockfiles committed: package-lock.json / pnpm-lock.yaml / poetry.lock / uv.lock / requirements.txt with == pins / go.sum / Cargo.lock in git"
+          - "Docker: base images pinned by digest ('@sha256:') or exact tag vs. ':latest'; CI actions pinned to SHA vs. '@main'"
+          - "weight/artifact integrity: checksum/signature verification on downloads ('sha256', 'verify', HF revision pins)"
+          - "dependency scanning in CI: dependabot/renovate config, 'pip-audit', 'npm audit', 'trivy', 'grype', 'socket'"
+        scoring_anchors: >-
+          0 = floating model aliases (e.g. 'latest') in production config, or
+          no lockfile committed; 1 = lockfiles committed but model ids
+          unpinned, or base images/CI actions unpinned, or no integrity
+          verification/scanning; 2 = exact model ids + committed lockfiles +
+          pinned images/actions + integrity verification or dependency
+          scanning in CI.
+        added_in: "2.0.0"
+
+  # ───────────────────────────────────────────────────────────────────────
+  - id: rollout_maturity
+    name: "Rollout Maturity"
+    weight: 8
+    description: >-
+      How autonomy is earned, not assumed.
+    checks:
+      - id: R1
+        name: "Staged autonomy"
+        description: >-
+          Evidence of shadow mode, human-approval mode, or partial automation
+          (flags, modes, or config), not launch-to-full-autonomy.
+        evidence_hints:
+          - "grep 'shadow', 'dry_run', 'suggest_only', 'autopilot', 'mode', 'autonomy_level', 'copilot'"
+          - "config/flags selecting between observe/suggest/act behaviors per feature or action type"
+          - "code branches where 'act' is gated behind a mode check while 'log what I would have done' always runs"
+          - "feature-flag definitions staging the rollout (percentage rollouts, cohort flags)"
+        scoring_anchors: >-
+          0 = launched straight to full autonomy — no modes, flags, or staging
+          anywhere; 1 = a mode flag exists but is implicit/undocumented (a
+          default nobody chose) or covers only part of the action surface; 2 =
+          explicit observe/suggest/act staging in config with code branches
+          honoring the mode per feature or action type.
+        added_in: "1.0.0"
+
+      - id: R2
+        name: "Promotion criteria"
+        description: >-
+          Written, measurable criteria for moving between autonomy stages.
+        evidence_hints:
+          - "docs: glob '**/rollout*', '**/promotion*', '**/graduation*', ADRs or runbooks stating thresholds ('promote when accuracy > X% over N cases')"
+          - "criteria tied to measured metrics that actually exist (cross-check P4/P6 outputs)"
+          - "grep 'criteria', 'graduate', 'promote' in docs/ and config"
+          - "vague aspirations ('when we're confident') without numbers = partial"
+        scoring_anchors: >-
+          0 = no written criteria for moving between autonomy stages; 1 =
+          vague aspirations without numbers ('when we're confident'); 2 =
+          written, measurable thresholds ('promote when accuracy > X% over N
+          cases') tied to metrics that actually exist (cross-check P4/P6).
+        added_in: "1.0.0"
+
+      - id: R3
+        name: "Rollback procedure"
+        description: >-
+          A documented way to drop back a stage after an incident.
+        evidence_hints:
+          - "runbooks: glob '**/rollback*', '**/incident*', '**/runbook*' describing how to reduce autonomy"
+          - "the mechanism referenced actually exists (the R1 mode flag / G6 switch it says to flip)"
+          - "grep 'rollback', 'demote', 'downgrade' in docs and deploy scripts"
+          - "post-incident templates or history showing the procedure was exercised"
+        scoring_anchors: >-
+          0 = no rollback/demotion procedure documented; 1 = a document exists
+          but references mechanisms that don't exist, or has never been
+          exercised; 2 = a documented procedure referencing real mechanisms
+          (the R1 mode flag / G6 switch), exercised or tested at least once.
+        added_in: "1.0.0"
+
+      - id: R4
+        name: "Risk tiering"
+        description: >-
+          Actions classified by risk level, with autonomy granted per tier
+          rather than globally.
+        evidence_hints:
+          - "grep 'risk', 'tier', 'severity', 'risk_level', 'high_risk' in action/tool definitions"
+          - "per-action or per-tool metadata assigning risk classes, consumed by the gating logic (cross-check G3/G9)"
+          - "config mapping tiers to required approvals/autonomy modes"
+          - "ANTI-EVIDENCE: one global autonomy switch applied identically to 'send summary email' and 'issue refund'"
+        scoring_anchors: >-
+          0 = one global autonomy switch applied identically to all actions
+          regardless of risk; 1 = risk labels/tiers exist on actions but the
+          gating logic does not consume them; 2 = per-action/per-tool risk
+          tiers consumed by the gating logic (cross-check G3/G9), with
+          autonomy granted per tier.
+        added_in: "1.0.0"
+
+  # ───────────────────────────────────────────────────────────────────────
+  - id: nfr_foundations
+    name: "NFR Foundations"
+    weight: 6
+    description: >-
+      Non-functional foundations.
+    checks:
+      - id: N1
+        name: "Latency budget"
+        description: >-
+          A stated target with measurement against it.
+        evidence_hints:
+          - "stated targets: grep 'latency', 'p95', 'p99', 'slo', 'sla', 'budget_ms' in docs/config/monitoring rules"
+          - "measurement: latency histograms/percentile metrics in code or APM config (cross-check S4)"
+          - "alerting when the target is breached (alarm thresholds matching the stated budget)"
+          - "streaming/TTFT targets for chat UX ('time_to_first_token') where applicable"
+        scoring_anchors: >-
+          0 = no stated latency target and no measurement; 1 = a target stated
+          without measurement, or latency measured without a stated target; 2
+          = a stated target + percentile measurement against it + an alert
+          when the target is breached.
+        added_in: "1.0.0"
+
+      - id: N2
+        name: "Scalability posture"
+        description: >-
+          Stateless services or documented scaling approach for the
+          load-bearing path.
+        evidence_hints:
+          - "statelessness: session/state kept in Redis/DB vs. in-process globals and module-level caches holding per-user state"
+          - "horizontal scaling config: k8s replicas/HPA, PM2 cluster mode, serverless deployment (Vercel/Lambda), ASGI workers"
+          - "docs: architecture notes on the scaling approach for the hot path"
+          - "grep for in-memory singletons on the request path that would break with >1 instance (anti-evidence)"
+        scoring_anchors: >-
+          0 = per-user/request state held in process memory on the hot path
+          (breaks with >1 instance); 1 = mostly stateless but the scaling
+          approach is undocumented and unconfigured; 2 = stateless
+          load-bearing path (state in Redis/DB) with a documented or
+          configured horizontal scaling approach (replicas, HPA, serverless,
+          cluster mode).
+        added_in: "1.0.0"
+
+      - id: N3
+        name: "Reliability basics"
+        description: >-
+          Retries with backoff, idempotency for event handlers (duplicate
+          events don't double-process), graceful degradation.
+        evidence_hints:
+          - "grep 'retry', 'backoff', 'tenacity', 'p-retry', 'exponential' on external calls"
+          - "idempotency: 'idempotency_key', dedupe by event id, upsert-not-insert in webhook/event handlers"
+          - "graceful degradation branches: reduced functionality on dependency failure rather than 500s ('except', 'catch' paths returning useful fallbacks)"
+          - "dead-letter queues / poison-message handling in the async layer"
+        scoring_anchors: >-
+          0 = no retries, no idempotency, failures surface as unhandled
+          errors; 1 = retries with backoff present but event/webhook handlers
+          not idempotent, or no graceful-degradation branches; 2 = backoff
+          retries on external calls + idempotent event handling (dedupe/upsert
+          by event id) + graceful degradation paths.
+        added_in: "1.0.0"
+
+      - id: N4
+        name: "Compliance mapping"
+        description: >-
+          If the domain is regulated (health, finance, government), controls
+          are mapped to the applicable regime (HIPAA, SOC 2, GDPR, FedRAMP).
+        evidence_hints:
+          - "grep -ri 'hipaa', 'soc 2', 'soc2', 'gdpr', 'fedramp', 'pci', 'ccpa', 'dpa', 'baa' in docs/"
+          - "control mappings: compliance matrices, policy docs linking controls to code/infra"
+          - "data-handling artifacts: retention policies, data-processing agreements, PHI/PII data-flow diagrams"
+          - "N/A allowed for genuinely unregulated hobby/internal tools — state the domain judgment explicitly"
+        scoring_anchors: >-
+          0 = regulated domain (health, finance, government) with no
+          compliance mapping at all; 1 = the applicable regime is named in
+          docs but controls are not mapped to code/infra; 2 = a control
+          mapping linking regime requirements (HIPAA, SOC 2, GDPR, FedRAMP...)
+          to implemented controls and data-handling artifacts. N/A for
+          genuinely unregulated hobby/internal tools, with the domain judgment
+          stated.
+        added_in: "1.0.0"
