@@ -157,6 +157,30 @@ entry — never replace existing content. -->
 - **Score impact estimate:** stricter C6 scoring for systems that persist
   audit/memory artifacts into shared or public stores (this repo included)
 
+### PROP-20260730-ai-system-stability-audit-03
+- **Date:** 2026-07-30
+- **Proposer:** claude-fable-5
+- **Rubric version:** 2.0.0
+- **Type:** evidence-hint
+- **Affects:** PROVE / P6 (and boundary with P2)
+- **Audit that prompted it:** ai-system-stability-audit 2026-07-30 (compare re-audit)
+- **Rationale:** Scoring P6 required an unguided judgment call on whether a
+  deterministic validation runner in CI (schema + math checks with
+  exit-nonzero) counts as "evals run automatically". The P2/P6 boundary is
+  undefined: P2 credits the assertions, but nothing states whether P6 requires
+  the QUALITY eval suite (golden set, judge scores) to be the thing automated,
+  or any automated check suffices. Two models can defensibly score this repo's
+  CI as P6=1 or P6=2 — a 1.25-point swing on a Prove check.
+- **Suggested change (diff-style):**
+  ```diff
+  # rubric.yaml, P6 evidence_hints
+  +          - "scope boundary with P2: P6 scores the automation of the EVAL suite (golden sets, judge scoring, adversarial cases) — CI that runs only deterministic schema/format validation earns P6 = 1 at most; the quality evals themselves must run on the schedule for 2"
+  ```
+- **Expected semver bump if accepted:** patch
+- **Score impact estimate:** removes a 1.25-pt ambiguity on any repo whose CI
+  automates validation but not quality evals (this repo scored P6=1 under the
+  proposed rule)
+
 ## Accepted
 
 <!-- Evolve mode moves accepted proposals here. Each entry keeps its original
