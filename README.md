@@ -104,6 +104,23 @@ git config core.hooksPath .githooks
 
 This activates the pre-commit gate (`.githooks/pre-commit`), which validates the rubric and cross-file consistency before every commit. CI (`.github/workflows/validate.yml`) enforces the same rules on push and PR.
 
+## Model calibration and pinning
+
+The model that executes an audit is chosen by the Claude Code harness, not by this repo — there is no model config to pin. The repo pins by **policy** instead:
+
+- Every audit records the exact lowercased model id in its history JSON (`model` field, scoring.md §4.1), so every score is permanently attributable to the model that produced it.
+- The golden fixture (`tests/golden/`) was calibrated on `claude-fable-5` (46/50 first-run check-level agreement, 2026-07-30).
+- Before trusting scores produced by any other model, run the golden audit under that model and record its agreement rate here.
+- Score comparisons across history entries with different `model` values are trend signal, not regression proof — only same-model, same-rubric deltas are directly comparable.
+
+| Model | Golden agreement | Calibrated |
+|---|---|---|
+| `claude-fable-5` | 46/50 | 2026-07-30 |
+
+### Supply chain
+
+Zero runtime dependencies by design: the skill itself is markdown + YAML read by the harness, and `scripts/validate.py` uses only the Python stdlib plus `pyyaml` — which is installed in CI only, pinned to an exact version. CI actions in `.github/workflows/validate.yml` are pinned to full commit SHAs. Repo integrity is enforced by the pre-commit gate (`.githooks/pre-commit`), the CI rubric gate (rule G2), and git history.
+
 ## License
 
 MIT — see [LICENSE](LICENSE).
