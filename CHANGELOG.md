@@ -31,10 +31,12 @@ common check set with the headline labeled separately; gaps-table cap
 single-sourced in scoring.md §2.4 plus an unrounded gap-sum aggregation rule;
 sign-correct half-away-from-zero rounding; weights/bands single-sourced to
 rubric.yaml with worked examples marked illustrative; evolve-mode bookkeeping
-(last_updated + added_in maintenance, 8-item verification checklist,
-scoring-change proposals may target maturity_bands); namespaced
+(last_updated + added_in maintenance, 11-item verification checklist,
+scoring-change proposals may target maturity_bands or the §4 history-JSON
+schema, with schema_version bumped iff §4.1 changed); namespaced
 concurrent-safe proposal ids (`PROP-YYYYMMDD-<repo-slug>-NN`) with
-three-section scans and an accepted-ledger format (Accepted/Applied in/As
+three-section scans, post-append collision re-read with HHMMSS suffix rename,
+and an accepted-ledger format (Accepted/Applied in/As
 modified); deterministic inputs (target resolution, pillar-name resolution,
 lowercased exact model id); mechanical files_examined definition with a
 files_manifest reproducibility record and a distinct_evidence_paths companion
@@ -48,8 +50,9 @@ best-effort post-audit commits.
   Data (12), Decision Engine (14), Orchestration & Humans (10), Shared
   Platform (10), Rollout Maturity (8), NFR Foundations (6). Scoring method
   (0/1/2 per check, weighted pillar average, N/A renormalization) and maturity
-  bands (Fragile <40, Developing 40-59, Production-Capable 60-79,
-  Production-Grade 80-100) unchanged from v1.
+  band boundaries (Fragile <40.0, Developing 40.0-<60.0, Production-Capable
+  60.0-<80.0, Production-Grade >=80.0; half-open intervals — rubric.yaml
+  `maturity_bands` is authoritative) carried over from v1.
 - 7 new 2026-era checks, each carrying a recorded `rationale`: G8 prompt
   injection defense, G9 tool and MCP security, G10 agent execution sandboxing
   (Govern now 10 checks), P8 adversarial and safety evals (Prove 8), C6 memory
@@ -60,9 +63,10 @@ best-effort post-audit commits.
 - `PROPOSALS.md` and this changelog.
 - **gaps mode**: reports only missing/partial checks, ranked by weighted point
   gain ("adding X gains +N.N points").
-- **compare mode** + `history/`: every audit writes a JSON result; compare
-  reports per-pillar deltas vs. the previous audit of the same repo, flagging
-  cross-rubric-version comparisons as approximate.
+- **compare mode** + `history/`: every full/gaps/compare audit writes a JSON
+  result; compare reports per-pillar deltas vs. the previous audit of the same
+  repo, flagging cross-rubric-version comparisons and recomputing their deltas
+  deterministically on the common check set (scoring.md §3).
 - **evolve mode**: reviews pending proposals with impact analysis against
   history/; Kay decides; accepted changes bump this version.
 - Metrics-first output language: files scanned, checks evidenced vs. absent,

@@ -13,7 +13,11 @@ Id format: `PROP-YYYYMMDD-<repo-slug>-NN` — the slug of the audited repo
 this file and scan ALL THREE sections (Pending, Accepted, AND Rejected) for
 today's ids with the same slug; continue the sequence. Append after
 re-reading; if the "(none — delete this line…)" placeholder is already gone,
-append below the last entry — never replace existing content.
+append below the last entry — never replace existing content. The pre-write
+scan is not a lock: immediately after appending, re-read this file; if an id
+you just wrote also appears in an entry you did not write (concurrent audit),
+rename YOURS with your audit's HHMMSS suffix — `PROP-YYYYMMDD-<repo-slug>-NN-HHMMSS`
+— and re-verify uniqueness (full rule: EVOLUTION.md, id format).
 
 ```markdown
 ### PROP-YYYYMMDD-<repo-slug>-NN
@@ -95,6 +99,9 @@ entry — never replace existing content. -->
 - **Expected semver bump if accepted:** major
 - **Score impact estimate:** no score change (trace enrichment only;
   scoring-change proposals are always MAJOR)
+- **Refinement (2026-07-29):** if accepted, scoring.md `schema_version` must
+  bump 1 → 2 alongside the schema edit (per EVOLUTION.md scoring-change scope;
+  verified by evolve checklist item 9).
 
 ## Accepted
 

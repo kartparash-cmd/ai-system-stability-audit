@@ -83,13 +83,24 @@ sequence within the day for that slug (01, 02, 03). Before numbering, re-read
 PROPOSALS.md and scan ALL THREE sections — Pending, Accepted, AND Rejected —
 for today's ids with the same slug; if any exist, continue the sequence.
 
+The pre-write scan is not a lock: two concurrent audits of the same repo on
+the same day can both compute the same NN. Collision resolution is therefore
+mandatory: **immediately after appending, re-read PROPOSALS.md once more.** If
+any id you just wrote also appears in an entry you did not write — or NN would
+exceed 99 — rename YOUR entry by suffixing your audit's history-filename time:
+`PROP-YYYYMMDD-<repo-slug>-NN-HHMMSS`. Re-read once more to confirm the
+renamed id is unique before presenting the scorecard.
+
 Append only after re-reading: if the target section shows the placeholder
 `*(none — delete this line when adding the first entry)*`, delete that
 placeholder line when appending the first entry; if the placeholder is already
 gone, append below the last entry — never replace existing content.
 
-A `scoring-change` proposal may target scoring.md formulas OR rubric.yaml's
-`maturity_bands` block; either target is always a MAJOR bump.
+A `scoring-change` proposal may target scoring.md content (formulas or the §4
+history-JSON schema) OR rubric.yaml's `maturity_bands` block; any of these
+targets is always a MAJOR bump. A change to the §4.1 schema additionally
+requires bumping scoring.md's `schema_version` integer (verified by evolve
+checklist item 9).
 
 The diff must be concrete and mechanically applicable. For a `new-check`, write
 the full check entry as it would appear in rubric.yaml (id, name, description,
@@ -161,14 +172,17 @@ the skill with the evolve argument. Evolve mode never runs implicitly.
 
    Make a genuine recommendation for every proposal — never punt the analysis
    to Kay — but the recommendation decides nothing.
-4. **Kay decides each proposal individually:** accept / reject / modify
+4. **Kay decides each proposal individually:** accept / reject / modify / defer
    (modify = Kay states the change, you restate the amended diff, Kay confirms,
-   then it is treated as accepted-as-modified).
+   then it is treated as accepted-as-modified; defer = the entry STAYS in
+   Pending — append to it `- **Deferred:** YYYY-MM-DD — <what evidence would
+   decide it>` and take no other action on it this session).
 5. **Apply accepted proposals:**
    a. Edit the target file exactly per the (possibly amended) diff. For most
       proposal types the target is `rubric.yaml`. When Kay accepts a
-      `scoring-change` proposal, the target is `scoring.md` (formulas) OR
-      rubric.yaml's `maturity_bands` block, whichever the proposal names; for
+      `scoring-change` proposal, the target is `scoring.md` (formulas or the
+      §4 history-JSON schema) OR rubric.yaml's `maturity_bands` block,
+      whichever the proposal names; for
       a `new-mode` proposal, edit `SKILL.md`. These scoring/mode edits are
       always MAJOR bumps and are permitted ONLY in evolve mode with Kay's
       explicit acceptance.
@@ -206,7 +220,7 @@ the skill with the evolve argument. Evolve mode never runs implicitly.
    ```
    Never delete rejected entries. They are the institutional memory that stops
    future models from re-proposing the same idea.
-7. **Verify and report** — run this 8-item checklist, every item mandatory:
+7. **Verify and report** — run this 11-item checklist, every item mandatory:
    1. Pillar weights sum to 100.
    2. rubric.yaml parses as YAML.
    3. Check ids are unique and no deprecated id was reused.
@@ -215,18 +229,35 @@ the skill with the evolve argument. Evolve mode never runs implicitly.
    5. rubric.yaml `last_updated:` equals today's date (America/New_York).
    6. Every `added_in:` value matches a real released version (checks added
       this session carry the version this bump produced).
-   7. No stale weight/band/check-count literal is left in scoring.md or
-      CHANGELOG.md — grep both files for the numbers the accepted diff
-      invalidated.
+   7. No stale literal is left in ANY skill file — grep scoring.md,
+      CHANGELOG.md, SKILL.md, and EVOLUTION.md for every weight, band,
+      check-count, pillar display name, mode name, and template-element count
+      the accepted diff invalidated (SKILL.md hardcodes the pillar names in
+      its output template and the "all 11 template elements" count; EVOLUTION.md
+      and PROPOSALS.md restate formats and mode-dependent rules).
    8. PROPOSALS.md sections are consistent: every dispatched entry moved to
-      Accepted or Rejected, placeholders correct.
-   Confirm every pending proposal was dispatched, then summarize: N accepted,
-   M rejected, new version.
+      Accepted or Rejected; deferred entries remain in Pending, each with its
+      dated `- **Deferred:**` line; placeholders correct.
+   9. scoring.md `schema_version` (§4.1) is bumped by 1 iff an accepted diff
+      changed the §4.1 history JSON schema; if none did, it is unchanged.
+   10. Mode consistency — every mode named in SKILL.md's modes table also
+      appears in SKILL.md's frontmatter `description:`, and its history-write
+      behavior is stated consistently in SKILL.md's history-write sentence,
+      scoring.md §4's opening write rule, and (only if it writes a history
+      file) scoring.md §4.1's `mode` enum.
+   11. SKILL.md's frontmatter `description:` is ≤ 1024 characters after any
+      edit (hard platform cap on skill descriptions).
+   Confirm every pending proposal was dispatched or explicitly deferred, then
+   summarize: N accepted, M rejected, K deferred, new version.
 
 ### Comparability note
 
 History JSONs record the rubric version they were scored under. Compare mode
-(in SKILL.md) must flag any cross-version comparison: same-version deltas are
-exact; cross-version deltas are approximate and the version pair is stated.
+(in SKILL.md) must flag any cross-version comparison and state the version
+pair. Cross-version deltas are NOT guesswork: scoring.md §3 recomputes them
+deterministically on the common check set from the stored per-check scores.
+The only genuine unknowns are checks whose meaning changed when the stored
+evidence is insufficient to rescore them — mark those "unknown — will apply
+from next audit" (as in step 3's impact analysis), never estimate them.
 Evolve mode never rewrites history/ files — the rescoring in impact analysis
 is presented to Kay for the decision, not persisted.

@@ -79,7 +79,6 @@ pillars:
           - "files/modules named policy, guard, gate, rules, enforcement: glob '**/policy*', '**/guard*', '**/rules*'"
           - "code path between LLM output and action execution that can veto: grep 'is_allowed', 'check_policy', 'validate_action', 'deny'"
           - "policy engines: OPA/rego files, casbin models, custom rule tables in DB migrations"
-          - "scoring anchors: prompt-text-only policies = 0; enforcement point exists but does not cover the tool-execution/action path = 1; covers it = 2"
         scoring_anchors: >-
           0 = policies live only in prompt text; 1 = a code enforcement point
           exists but the tool-execution/action path can bypass it; 2 = every
@@ -117,7 +116,6 @@ pillars:
           - "grep the log-write call sites for completeness: does the record include model id, prompt version, retrieved doc ids, actor?"
           - "tamper-evidence: hash chains, WORM storage config, ledger services (QLDB, immudb), 'previous_hash'"
           - "tracing platforms wired as system of record: LangSmith/Langfuse/Braintrust/OTel span exports with run metadata"
-          - "scoring anchors: persistent append-only with full fields (inputs, context, model+version, prompt version, output, actor) = 2; structured but volatile/incomplete event capture = 1; unstructured stdout logging = 0"
         scoring_anchors: >-
           0 = unstructured stdout logging only; 1 = structured but volatile or
           incomplete event capture (missing model id, prompt version,
@@ -171,7 +169,6 @@ pillars:
           - "vault/secret-manager imports: 'boto3.*secretsmanager', 'SecretClient', 'google.cloud.secretmanager', 'vault', 'doppler', 'infisical', '1password'"
           - "secrets leaking into prompts or logs: grep prompt templates and logger calls for env-var interpolation of keys"
           - "CI config: secrets referenced via ${{ secrets.* }} vs. inlined values in .github/workflows, Dockerfiles, docker-compose"
-          - "scoring ceiling: gitignored .env with no committed/hardcoded keys but no vault/secret manager = 1; vault or secret manager wired in = 2"
         scoring_anchors: >-
           0 = keys committed to git, hardcoded in source, or interpolated into
           prompts/logs; 1 = gitignored .env with no committed/hardcoded keys
@@ -283,7 +280,6 @@ pillars:
           - "eval framework configs: 'promptfoo', 'braintrust', 'langsmith', 'deepeval', 'ragas', 'inspect_ai', 'openai evals'"
           - "check the set is VERSIONED (in git or a registry with revisions), not a one-off notebook"
           - "a runner that executes the set end-to-end against the real pipeline: grep 'run_evals', 'eval(' in scripts/, Makefile targets"
-          - "scoring ceiling: eval sets that only ever run against a mock/stub model score at most 1; 2 requires the harness to run provider-parameterized against a real model path"
         scoring_anchors: >-
           0 = no input/expected-output set exists; 1 = a set exists but is
           unversioned, a one-off notebook, or runs only against a mock/stub

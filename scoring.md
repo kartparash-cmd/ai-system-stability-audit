@@ -188,6 +188,18 @@ that is fine, as long as the number is stated. The history JSON additionally rec
 `files_manifest`: the sorted array of exactly the `files_examined` paths — this is the
 audit's reproducibility record (§4.1).
 
+**Determinism note.** `files_examined`, `configs_examined`, `coverage_pct`, and
+`files_manifest` are exploration records: they document what this particular run
+actually read, and they legitimately differ across models or runs even when every
+score agrees — evidence hints are adaptive search strategies, not a fixed script.
+They are context and audit-trail fields only, never inputs to any score, delta, or
+gap number, and they sit outside the top-of-file bit-identical guarantee (which
+covers score-derived numbers: pillar %, overall %, gap impacts, deltas; this section's
+intro conditions coverage determinism on identical file lists). The deterministic,
+cross-model-comparable evidence metrics are `evidence_density_pct` and
+`distinct_evidence_paths` (§2.1), which depend only on per-check scores and citations.
+Never treat a coverage difference between two audits as a regression or improvement.
+
 ### 2.3 Weighted gap impact per check
 
 For every applicable check scored 0 or 1, the exact overall-percentage points gained by
@@ -251,6 +263,29 @@ delta, band change if any (`Fragile → Developing`), and two lists: **improved 
 and **regressed checks** with their transitions (`P6: 0 → 2`). A pillar that is N/A in
 one audit but not the other is reported as `n/a → NN.N%` with no numeric delta.
 
+**Recompute the baseline — never subtract stored rounded values.** Previous pillar and
+overall percentages MUST be recomputed at full precision from the baseline history
+file's stored `score_sum`/`applicable` and per-check scores; never subtract the stored
+1-decimal rounded percentages. (§1.6 stores rounded values for display, but a stored
+41.7 vs an exact 41.667 can shift a delta by 0.1 pp and break cross-model
+determinism.) Displayed endpoints use the rounded values; every delta is computed at
+full precision and rounded once, per §1.6.
+
+**Applicable-set rule (N/A changes between audits).** If any check is N/A in one audit
+but scored in the other, all numeric deltas — per-pillar and overall — MUST be computed
+over the intersection of checks applicable (non-N/A) in BOTH audits. Recompute both
+sides at full precision over that common applicable set using §1.2–§1.4 (including
+Rule B weight renormalization on the reduced set); the history JSON stores per-check
+scores, so this is mechanical. The current audit's headline numbers still use its own
+full applicable set and are reported separately, exactly as in §3. The comparison
+output MUST include a flag line mirroring the §3 rubric-version flag:
+`⚠ Applicable-check set changed (N checks n/a→scored, M scored→n/a) — deltas computed on the common applicable set.`
+Checks whose N/A status changed appear in the transition lists (`S3: n/a → 1`) but
+never contribute to numeric deltas. Without this rule, marking a whole pillar N/A
+moves the overall by pure Rule B weight renormalization with zero code change, and a
+single check going n/a→0 shifts its pillar's denominator under Rule A — both would
+report spurious deltas.
+
 ---
 
 ## 3. Comparing across rubric versions
@@ -259,7 +294,10 @@ one audit but not the other is reported as `n/a → NN.N%` with no numeric delta
 the most recent prior entry (see SKILL.md procedure — snapshot before write). Rules:
 
 **Common check set.** All deltas — per-pillar and overall — are computed on the COMMON
-check set between the two audits. The current audit's headline numbers still include
+check set between the two audits. The common set is additionally restricted to checks
+applicable (non-N/A) in both audits — §2.5's applicable-set rule stacks on top of
+rubric-version differences, and when both conditions hold the output carries both flag
+lines. The current audit's headline numbers still include
 new checks and are reported separately, labeled "(headline, incl. N checks not in
 baseline)". Worked sentence (illustrative numbers): "Overall 45.4% (headline, incl. 2
 checks not in baseline); common-check delta: 37.6% → 44.1% (+6.5)" — the headline and
@@ -304,6 +342,15 @@ history/<repo-slug>-<YYYY-MM-DD-HHMMSS>.json
   regardless of where the audit runs or whose repo it is. Format `YYYY-MM-DD-HHMMSS`.
   Every audit writes its own file; the baseline for compare is the most recent prior
   entry (see SKILL.md procedure — snapshot before write).
+- **Collision rule — never overwrite.** Before writing, check whether the target
+  filename already exists (two same-slug audits in the same second). If it does,
+  append a monotonic suffix before `.json` — `<slug>-<YYYY-MM-DD-HHMMSS>-2.json`,
+  then `-3`, … — re-checking existence at each increment (create-if-absent semantics;
+  with atomic create available, e.g. open with `O_CREAT|O_EXCL` or `open(..., "x")`,
+  retry with the next suffix on failure). An existing history file is never
+  overwritten or truncated. For baseline ordering, a suffixed file is LATER than the
+  unsuffixed file with the same timestamp, and higher suffixes are later still (do not
+  rely on raw lexicographic sort here: `-2.json` sorts before `.json`).
 - The file lives in the skill's own directory, not in the audited repo (the audit is
   read-only with respect to the target).
 
@@ -318,7 +365,8 @@ Design rules: no nesting deeper than two levels; object keys in the order given 
   "schema_version": 1,                 // integer; bump only if this schema changes
   "repo": "string",                    // human name as reported in the scorecard
   "repo_slug": "string",               // slug used in the filename
-  "date": "YYYY-MM-DD",
+  "date": "YYYY-MM-DD",                // America/New_York — the same instant as the
+                                       // filename timestamp, never the local/UTC date
   "rubric_version": "1.0.0",           // semver, from rubric.yaml
   "model": "string",                   // e.g. "claude-fable-5"
   "mode": "full" | "gaps" | "compare",     // evolve never writes a history file;
@@ -365,7 +413,9 @@ Field notes:
 - `checks.*.evidence` is one line, ≤ 200 chars, always containing at least one path or
   key for scores 1–2; for score 0 it states what was searched.
 - `model` is the exact model id string, lowercased (e.g. `claude-fable-5`) — never a
-  marketing name or an abbreviation.
+  marketing name or an abbreviation. Source of truth: the runtime-reported id of the
+  model executing the audit (see SKILL.md, Output format). If no runtime id is
+  available, the value is the literal string `"unknown"`.
 - `pillars.*.pct` uses `null` (not 0) for an entirely-N/A pillar so that a 0% pillar
   and an N/A pillar are never confused.
 - `top_gaps[].from` is the current score (0 or 1) so the gap list is self-describing.
