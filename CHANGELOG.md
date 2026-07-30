@@ -11,6 +11,37 @@ points; **PATCH** = evidence hints, wording, typos.
 Entries are added only by evolve mode with the skill owner's approval (except
 this initial release). Each entry lists the PROP ids applied, or "initial".
 
+## [3.0.0] — 2026-07-30
+
+MAJOR. First evolve-mode release: all 7 pending proposals accepted by the
+skill owner (Kartikeya Parashar) in one session — one combined bump at the
+highest class (two MAJOR proposals). `rubric_version` 2.0.0 → **3.0.0**;
+`last_updated` 2026-07-30.
+
+Applied (see PROPOSALS.md Accepted for full text and diffs):
+
+- **PROP-20260729-meta-01** (new-mode, MAJOR): `trend` mode — per-check
+  trajectories, never-moved checks, N/A frequency across history entries;
+  reporting-only, no history write. SKILL.md modes table + frontmatter
+  description + README table updated (checklist item 10 sync).
+- **PROP-20260729-meta-02** (scoring-change, MAJOR): history JSON
+  `schema_version` 1 → 2 — optional per-check `searched` and
+  `evidence_extended` trace fields; as modified by the owner, also optional
+  top-level `duration_seconds`, `tokens_estimate`, `cost_estimate_usd`
+  (P7/S4). v1 files remain valid; validate.py accepts both.
+- **PROP-20260730-ai-system-stability-audit-01** (evidence-hint, PATCH):
+  harness-hosted N/A guidance in the rubric header.
+- **-02** (PATCH): C6 publication-boundary hint (where artifacts sync to).
+- **-03** (PATCH): P2/P6 scope boundary (deterministic-check CI caps P6 at 1).
+- **-04** (PATCH): D2 anchor — self-reported confidence is not computed.
+- **-05** (PATCH): C5 — no retrieval layer → N/A; never double-count D3's
+  fallback.
+
+Score impact: no formula changes; no historical score changes (all history
+D2 = 0 already; fixture C5 already N/A). Known forward effect: the skill
+repo's own C5 = 1 (2026-07-30 audits) is expected to reclassify to N/A at the
+next audit under the -05 rule (C&D 62.5% → 66.7%, overall ≈ +0.5).
+
 ## [2.0.1] — 2026-07-30
 
 PATCH. **Engine/docs only** — no rubric check, weight, or scoring-formula

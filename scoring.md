@@ -386,7 +386,15 @@ Design rules: no nesting deeper than two levels; object keys in the order given 
 
 ```jsonc
 {
-  "schema_version": 1,                 // integer; bump only if this schema changes
+  "schema_version": 2,                 // integer; bump only if this schema changes.
+                                       // v2 (rubric 3.0.0, PROP-20260729-meta-02): adds OPTIONAL per-check
+                                       // "searched" (array of the patterns/globs actually run) and
+                                       // "evidence_extended" (full supporting snippet, no 200-char cap),
+                                       // plus OPTIONAL top-level "duration_seconds" (wall-clock, start to
+                                       // report), "tokens_estimate" and "cost_estimate_usd" (when the
+                                       // harness reports usage; omit rather than guess). New audits write
+                                       // schema_version 2; v1 files remain valid history and are read
+                                       // without the optional fields.
   "repo": "string",                    // human name as reported in the scorecard
   "repo_slug": "string",               // slug used in the filename
   "date": "YYYY-MM-DD",                // America/New_York — the same instant as the
@@ -436,6 +444,15 @@ Field notes:
 
 - `checks.*.evidence` is one line, ≤ 200 chars, always containing at least one path or
   key for scores 1–2; for score 0 it states what was searched.
+- `checks.*.searched` (optional, v2) is the array of grep patterns/globs actually run
+  for the check; `checks.*.evidence_extended` (optional, v2) carries the full
+  supporting snippet with no length cap. Populate both when practical — they are what
+  makes an old audit rescoreable when a check's meaning or anchors later change
+  (evolve-mode impact analysis, §3 recomputes).
+- `duration_seconds`, `tokens_estimate`, `cost_estimate_usd` (optional, v2, top-level):
+  wall-clock seconds from audit start to report, and token/dollar usage when the
+  harness reports it. Omit rather than guess — an absent field means "not measured",
+  never zero.
 - `mode` records what actually ran, not what was requested: a compare run downgraded
   because no baseline history entry exists for the `repo_slug` records `"mode": "full"`
   and `"compared_to": null`.
@@ -452,7 +469,7 @@ Field notes:
 ### 4.2 Worked example file — `history/helpdesk-bot-2026-07-29-153000.json`
 
 > **Illustrative only** — scored under a hypothetical 43-check rubric labeled 1.0.0
-> (pre-release draft; the live rubric starts at 2.0.0 with more checks). Always take
+> (pre-release draft; the live rubric is 3.0.0 with more checks). Always take
 > check counts, IDs, and denominators from the current rubric.yaml, never from this
 > example. `files_manifest` is truncated here to 5 of its 47 entries for brevity —
 > a real file lists every examined path.
@@ -554,7 +571,7 @@ Field notes:
 ## 5. End-to-end worked example: `helpdesk-bot`
 
 > **Illustrative only** — scored under a hypothetical 43-check rubric labeled 1.0.0
-> (pre-release draft; the live rubric starts at 2.0.0 with more checks). Always take
+> (pre-release draft; the live rubric is 3.0.0 with more checks). Always take
 > check counts, IDs, and denominators from the current rubric.yaml, never from this
 > example.
 

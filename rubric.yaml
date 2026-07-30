@@ -25,9 +25,17 @@
 # added_in: the rubric version in which the check first shipped.
 #           "1.0.0" = original v1 check (meaning preserved verbatim)
 #           "2.0.0" = new 2026-era check (carries a rationale field)
+#
+# Harness-hosted systems (skills, plugins, CLI tools where the LLM runtime is
+# an external harness): checks on infrastructure the harness owns (G1 authn,
+# G6 kill switch, G9 tool registry, S1/S2 gateway/failover, S5 async) are
+# legitimately N/A with a one-line argument. Checks on the system's OWN
+# behavior (G8 injection defense of content it reads, G10 scoping of writes
+# it instructs, C6 hygiene of artifacts it persists) are never N/A on
+# harness grounds. [PROP-20260730-ai-system-stability-audit-01]
 
-rubric_version: "2.0.0"
-last_updated: "2026-07-29"
+rubric_version: "3.0.0"
+last_updated: "2026-07-30"
 
 # band = highest band whose min_percent <= rounded overall; determined from the
 # 1-decimal rounded value; top band includes 100
@@ -366,6 +374,7 @@ pillars:
           - "scheduled triggers: 'schedule:', 'cron:' in CI, or scheduler jobs (Airflow/dagster/cloud scheduler) running eval suites"
           - "threshold gates: 'fail if score <', 'min_score', 'threshold', exit-nonzero-on-regression logic"
           - "alert wiring: Slack/PagerDuty/webhook notifications on eval failure"
+          - "scope boundary with P2: P6 scores the automation of the EVAL suite (golden sets, judge scoring, adversarial cases) — CI that runs only deterministic schema/format validation earns P6 = 1 at most; the quality evals themselves must run on the schedule for 2"
         scoring_anchors: >-
           0 = evals run manually only; 1 = evals wired into CI or a schedule
           but with no threshold gate or alert on regression; 2 = automated
@@ -505,6 +514,7 @@ pillars:
           - "similarity-score floor before docs are used (min relevance threshold config)"
           - "prompt-only mitigation ('if no context say you don't know') without a code branch is partial"
           - "tests covering the empty-retrieval case"
+          - "no retrieval layer in the system at all -> C5 is N/A (no empty-retrieval state exists); do NOT credit generic low-confidence fallback branches here - that behavior is D3's scope, and counting it twice inflates both pillars"
         scoring_anchors: >-
           0 = no empty/low-score branch — the model answers regardless of
           retrieval; 1 = prompt-only mitigation, or a code branch with a
@@ -533,6 +543,7 @@ pillars:
           - "deletion/expiry: TTL config on memory records, 'delete_memory', 'purge', GDPR/right-to-erasure endpoints"
           - "context assembly: the code that builds the prompt — does it pull ONLY from the requesting user's sessions/memories?"
           - "caches or scratch files shared across users (anti-evidence): global conversation buffers, shared temp dirs keyed by nothing"
+          - "publication boundary: check where persisted memory/artifacts sync or publish to (git remotes, shared drives, artifact stores) — persistence into a store with BROADER visibility than the source data is a trust-boundary crossing (anti-evidence); run `git remote -v` on the store's repo"
         scoring_anchors: >-
           0 = memory shared/unscoped across users or tenants, or PII persisted
           raw with no deletion path; 1 = memory scoped per user/tenant but
@@ -578,10 +589,12 @@ pillars:
           - "output schemas/DB columns containing a confidence field that is COMPUTED, not model-self-reported prose"
           - "multiple-sample voting or judge-scored confidence in the decision path"
         scoring_anchors: >-
-          0 = no computed confidence signal anywhere; 1 = a signal is computed
-          (retrieval similarity, logprobs, votes) but discarded before the
-          final output object; 2 = a computed confidence attached to outputs
-          and available downstream (schema field, DB column).
+          0 = no computed confidence signal anywhere (a model-self-reported
+          confidence value does not count as computed, even if attached and
+          consumed downstream); 1 = a signal is computed (retrieval
+          similarity, logprobs, votes) but discarded before the final output
+          object; 2 = a computed confidence attached to outputs and available
+          downstream (schema field, DB column).
         added_in: "1.0.0"
 
       - id: D3

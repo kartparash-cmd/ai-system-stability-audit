@@ -27,11 +27,12 @@ Then, in Claude Code, ask for an audit (e.g. "audit my AI system") or invoke the
 | **compare** | "compare", "re-audit", "delta" | Full audit plus per-pillar and per-check deltas vs. the most recent prior audit of the same repo |
 | **partial** | "partial: <pillar names>" | Audits only the named pillars; no overall %, no history write |
 | **evolve** | "evolve", "review proposals", "apply proposals" | Reviews pending rubric proposals with impact analysis; the skill owner accepts/rejects/defers each |
+| **trend** | "trend", "trajectory" | Per-check score trajectories, never-moved checks, N/A frequency across ≥3 history entries; reporting only |
 | **dry-run** prefix | "dry-run audit", etc. | Any audit mode (full, gaps, compare, partial), skipping the history write and proposal filing; evolve has no dry-run |
 
 ## Example scorecard fragment
 
-> Illustrative — from scoring.md's 43-check 1.0.0 worked example; live rubric is 2.0.0 with 50 checks.
+> Illustrative — from scoring.md's 43-check 1.0.0 worked example; live rubric is 3.0.0 with 50 checks.
 
 ```
 # AI System Stability Scorecard: helpdesk-bot

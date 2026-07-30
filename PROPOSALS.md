@@ -50,6 +50,17 @@ Pending, Accepted, AND Rejected for today's PROP ids (same repo-slug) before
 numbering a new one. If the placeholder is gone, append below the last
 entry — never replace existing content. -->
 
+*(none — delete this line when adding the first entry)*
+
+## Accepted
+
+<!-- Evolve mode moves accepted proposals here. Each entry keeps its original
+text verbatim plus three mandated lines:
+  - **Accepted:** YYYY-MM-DD by the skill owner
+  - **Applied in:** vX.Y.Z
+  - **As modified:** <amended diff summary, or "as filed">
+Never delete entries from this section. -->
+
 ### PROP-20260729-meta-01
 - **Date:** 2026-07-29
 - **Proposer:** claude-fable-5
@@ -74,6 +85,9 @@ entry — never replace existing content. -->
 - **Expected semver bump if accepted:** major
 - **Score impact estimate:** no score change (reporting-only mode; new modes
   are always MAJOR per the semver policy)
+- **Accepted:** 2026-07-30 by Kartikeya Parashar
+- **Applied in:** v3.0.0
+- **As modified:** as filed, plus mechanical mode-list sync required by checklist item 10: "trend" added to the SKILL.md frontmatter description and the README modes table
 
 ### PROP-20260729-meta-02
 - **Date:** 2026-07-29
@@ -104,6 +118,9 @@ entry — never replace existing content. -->
 - **Refinement (2026-07-29):** if accepted, scoring.md `schema_version` must
   bump 1 → 2 alongside the schema edit (per EVOLUTION.md scoring-change scope;
   verified by evolve checklist item 9).
+- **Accepted:** 2026-07-30 by Kartikeya Parashar
+- **Applied in:** v3.0.0
+- **As modified:** schema v2 additionally gains optional top-level duration_seconds, tokens_estimate, cost_estimate_usd fields (owner-directed in the same session, for P7 cost tracking and S4 observability)
 
 ### PROP-20260730-ai-system-stability-audit-01
 - **Date:** 2026-07-30
@@ -134,6 +151,9 @@ entry — never replace existing content. -->
 - **Expected semver bump if accepted:** patch
 - **Score impact estimate:** no score change for service repos; removes
   ~6 judgment calls per harness-hosted audit (makes N/A sets reproducible)
+- **Accepted:** 2026-07-30 by Kartikeya Parashar
+- **Applied in:** v3.0.0
+- **As modified:** as filed
 
 ### PROP-20260730-ai-system-stability-audit-02
 - **Date:** 2026-07-30
@@ -156,6 +176,9 @@ entry — never replace existing content. -->
 - **Expected semver bump if accepted:** patch
 - **Score impact estimate:** stricter C6 scoring for systems that persist
   audit/memory artifacts into shared or public stores (this repo included)
+- **Accepted:** 2026-07-30 by Kartikeya Parashar
+- **Applied in:** v3.0.0
+- **As modified:** as filed
 
 ### PROP-20260730-ai-system-stability-audit-03
 - **Date:** 2026-07-30
@@ -180,6 +203,9 @@ entry — never replace existing content. -->
 - **Score impact estimate:** removes a 1.25-pt ambiguity on any repo whose CI
   automates validation but not quality evals (this repo scored P6=1 under the
   proposed rule)
+- **Accepted:** 2026-07-30 by Kartikeya Parashar
+- **Applied in:** v3.0.0
+- **As modified:** as filed
 
 ### PROP-20260730-ai-system-stability-audit-04
 - **Date:** 2026-07-30
@@ -208,6 +234,9 @@ entry — never replace existing content. -->
 - **Expected semver bump if accepted:** patch
 - **Score impact estimate:** resolves a 1.0-pt two-scorer split observed on
   the golden fixture's self-reported-confidence pattern
+- **Accepted:** 2026-07-30 by Kartikeya Parashar
+- **Applied in:** v3.0.0
+- **As modified:** as filed
 
 ### PROP-20260730-ai-system-stability-audit-05
 - **Date:** 2026-07-30
@@ -233,17 +262,9 @@ entry — never replace existing content. -->
 - **Score impact estimate:** removes a 1.2-pt double-count path on every
   non-RAG audit (golden fixture C&D pillar: 50.0% under the double-count vs
   N/A-whole-pillar under the correct reading)
-
-## Accepted
-
-<!-- Evolve mode moves accepted proposals here. Each entry keeps its original
-text verbatim plus three mandated lines:
-  - **Accepted:** YYYY-MM-DD by the skill owner
-  - **Applied in:** vX.Y.Z
-  - **As modified:** <amended diff summary, or "as filed">
-Never delete entries from this section. -->
-
-*(none — delete this line when adding the first entry)*
+- **Accepted:** 2026-07-30 by Kartikeya Parashar
+- **Applied in:** v3.0.0
+- **As modified:** as filed
 
 ## Rejected
 

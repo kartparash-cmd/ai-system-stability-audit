@@ -123,6 +123,7 @@ REQUIRED_HISTORY_KEYS = [
 ]
 VALID_MODES = {"full", "gaps", "compare"}
 VALID_SCORES = {0, 1, 2, None}
+VALID_SCHEMA_VERSIONS = {1, 2}
 
 
 def check_history_file(path, pillar_ids):
@@ -136,6 +137,21 @@ def check_history_file(path, pillar_ids):
     missing = [k for k in REQUIRED_HISTORY_KEYS if k not in data]
     if missing:
         err(f"{name}: missing required keys: {', '.join(missing)}")
+
+    sv = data.get("schema_version")
+    if sv not in VALID_SCHEMA_VERSIONS:
+        err(f"{name}: schema_version {sv!r} not in {sorted(VALID_SCHEMA_VERSIONS)}")
+
+    # v2 optional top-level fields: validate type when present (never required)
+    if not isinstance(data.get("duration_seconds", 0), (int, float)) or \
+            isinstance(data.get("duration_seconds", 0), bool):
+        err(f"{name}: duration_seconds must be a number when present")
+    for f in ("tokens_estimate",):
+        if f in data and (isinstance(data[f], bool) or not isinstance(data[f], (int, float))):
+            err(f"{name}: {f} must be a number when present")
+    if "cost_estimate_usd" in data and (isinstance(data["cost_estimate_usd"], bool)
+                                        or not isinstance(data["cost_estimate_usd"], (int, float))):
+        err(f"{name}: cost_estimate_usd must be a number when present")
 
     if data.get("mode") not in VALID_MODES:
         err(f"{name}: mode {data.get('mode')!r} not in "
@@ -164,6 +180,14 @@ def check_history_file(path, pillar_ids):
             if not str(entry.get("evidence") or "").strip():
                 err(f"{name}: check {cid} scored {score} but has no "
                     f"'evidence' line")
+        # v2 optional per-check trace fields: validate type when present
+        if "searched" in entry and (
+                not isinstance(entry["searched"], list)
+                or not all(isinstance(s, str) for s in entry["searched"])):
+            err(f"{name}: check {cid} 'searched' must be an array of strings")
+        if "evidence_extended" in entry and not isinstance(
+                entry["evidence_extended"], str):
+            err(f"{name}: check {cid} 'evidence_extended' must be a string")
 
     # 1-decimal numeric fields
     for field in ("overall_pct", "evidence_density_pct", "coverage_pct"):
