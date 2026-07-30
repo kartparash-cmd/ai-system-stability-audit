@@ -231,8 +231,9 @@ pillars:
           0 = tool set unbounded/auto-registered, or every tool shares one
           god-token; 1 = explicit allowlist but shared credentials,
           unvalidated tool arguments, or unpinned third-party MCP servers; 2 =
-          short explicit allowlist + per-tool least-privilege credentials +
-          schema-validated arguments + pinned/reviewed MCP servers.
+          explicit allowlist of ≤20 named tools/commands + per-tool
+          least-privilege credentials + schema-validated arguments +
+          pinned/reviewed MCP servers.
         added_in: "2.0.0"
 
       - id: G10
@@ -430,10 +431,11 @@ pillars:
         evidence_hints:
           - "glob '**/ingest*', '**/pipeline*', '**/etl*', '**/loader*' — one coherent module vs. scattered scripts/"
           - "pipeline frameworks: Airflow DAGs, dagster assets, prefect flows, temporal workflows for ingestion"
-          - "grep for multiple competing write paths to the index/vector store ('.add(', '.upsert(', 'index(' call sites) — many uncoordinated writers is anti-evidence"
+          - "grep for multiple competing write paths to the index/vector store ('.add(', '.upsert(', 'index(' call sites) — ≥2 uncoordinated writers is anti-evidence"
           - "chunking/embedding config centralized (one place defining chunk size, embed model) vs. duplicated per script"
         scoring_anchors: >-
-          0 = ad hoc scattered scripts each writing to the index/vector store;
+          0 = no main pipeline — ≥2 uncoordinated ad hoc scripts each writing
+          to the index/vector store;
           1 = a main pipeline exists but side scripts also write, or
           chunking/embedding config is duplicated per script; 2 = one coherent
           pipeline is the only writer, with chunking/embedding config
@@ -788,15 +790,15 @@ pillars:
           place.
         evidence_hints:
           - "gateway libs/services: 'litellm', 'openrouter', 'portkey', 'helicone', 'ai gateway', or a single internal llm_client module"
-          - "count direct SDK call sites: grep 'anthropic.', 'openai.', 'client.messages.create', 'chat.completions.create' outside the gateway module — many scattered call sites is anti-evidence"
+          - "count direct SDK call sites: grep 'anthropic.', 'openai.', 'client.messages.create', 'chat.completions.create' outside the gateway module — ≥3 such call sites is anti-evidence"
           - "model id sourced from config in ONE place vs. hardcoded per call site"
           - "retry/rate-limit/fallback options set on the gateway (grep 'fallbacks', 'num_retries', 'rpm', 'rate_limit')"
         scoring_anchors: >-
-          0 = direct SDK calls scattered across many call sites with per-site
-          model ids; 1 = a gateway/client module exists but call sites bypass
-          it, or model id/config is duplicated; 2 = all model calls go through
-          one gateway with retries/rate limits/fallback configured and the
-          model id sourced from one place.
+          0 = direct SDK calls at ≥3 call sites outside any gateway module,
+          with per-site model ids; 1 = a gateway/client module exists but call
+          sites bypass it, or model id/config is duplicated; 2 = all model
+          calls go through one gateway with retries/rate limits/fallback
+          configured and the model id sourced from one place.
         added_in: "1.0.0"
 
       - id: S2
@@ -933,12 +935,13 @@ pillars:
           - "docs: glob '**/rollout*', '**/promotion*', '**/graduation*', ADRs or runbooks stating thresholds ('promote when accuracy > X% over N cases')"
           - "criteria tied to measured metrics that actually exist (cross-check P4/P6 outputs)"
           - "grep 'criteria', 'graduate', 'promote' in docs/ and config"
-          - "vague aspirations ('when we're confident') without numbers = partial"
+          - "criteria containing no numeric threshold or sample size ('when we're confident') = partial"
         scoring_anchors: >-
           0 = no written criteria for moving between autonomy stages; 1 =
-          vague aspirations without numbers ('when we're confident'); 2 =
-          written, measurable thresholds ('promote when accuracy > X% over N
-          cases') tied to metrics that actually exist (cross-check P4/P6).
+          criteria written but containing no numeric threshold or sample size
+          (e.g. 'when we're confident'); 2 = written, measurable thresholds
+          ('promote when accuracy > X% over N cases') tied to metrics that
+          actually exist (cross-check P4/P6).
         added_in: "1.0.0"
 
       - id: R3

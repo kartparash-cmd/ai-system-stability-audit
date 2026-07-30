@@ -159,7 +159,9 @@ nonzero — the cite-or-downgrade rule (an uncited 1 or 2 is downgraded to 0) ma
 also compute and report:
 
 ```
-distinct_evidence_paths = count of distinct file paths cited across all check evidence
+distinct_evidence_paths = count of distinct concrete file paths cited in the evidence
+                          of checks scored 1 or 2; directories, glob patterns, and
+                          score-0 search targets are excluded
 ```
 
 It appears in the report header (SKILL.md output format) and in the history JSON schema
@@ -228,14 +230,22 @@ live rubric Govern has more checks — always use current rubric.yaml counts). R
 
 ### 2.4 Top-N gap ranking
 
-The gaps table lists the top **N** gaps, where **N = 10 in full and compare modes;
-N = all gaps in gaps mode** (fewer if fewer exist). This section is the single source
-for the table size — other files reference it, never restate it. Rows are ordered by:
+The gaps table lists the top **N** gaps, where **N = 10 in full, compare, and partial
+modes; N = all gaps in gaps mode** (fewer if fewer exist). This section is the single
+source for the table size — other files reference it, never restate it. Rows are
+ordered by:
 
 1. `gap_impact_points` descending (compare unrounded values);
 2. tie-break: pillar raw weight descending;
 3. tie-break: check ID ascending in rubric order (the order checks appear in
    rubric.yaml: G1 < G2 < … < G10 < P1 …).
+
+**Equality tolerance.** Two gap impacts are equal (a tie) iff their unrounded
+`gap_impact_points` values, rounded half-up to 6 decimal places, are identical; ties
+then fall through to tie-breaks 2 and 3. The comparison basis for rule 1 is explicitly
+the unrounded `gap_impact_points` rounded to 6 decimals — never the 1-decimal display
+values — so IEEE-754 last-bit differences from different evaluation orders cannot
+bypass the tie-breaks.
 
 This ordering is deterministic — two models with the same scores produce the same
 ranked list. In `gaps` mode the table is the primary output; in `full` mode it appears
@@ -374,7 +384,7 @@ Design rules: no nesting deeper than two levels; object keys in the order given 
   "overall_pct": 38.3,                 // 1 decimal
   "band": "Fragile" | "Developing" | "Production-Capable" | "Production-Grade",
   "evidence_density_pct": 58.5,        // 1 decimal
-  "distinct_evidence_paths": 31,       // §2.1 companion metric: distinct file paths cited across all check evidence
+  "distinct_evidence_paths": 23,       // §2.1 companion metric: distinct concrete file paths cited in the evidence of checks scored 1 or 2 (directories, globs, score-0 search targets excluded)
   "files_examined": 47,                // integer counts, per §2.2
   "files_total": 312,
   "configs_examined": 11,
@@ -399,7 +409,7 @@ Design rules: no nesting deeper than two levels; object keys in the order given 
 
   "na_checks": ["S3", "N4"],           // convenience list, rubric order
 
-  "top_gaps": [                        // §2.4 order, max 10
+  "top_gaps": [                        // §2.4 ordering; always the top 10 regardless of mode (the gaps-mode all-gaps rule applies to the report table only)
     { "check": "G3", "from": 0, "impact_pts": 2.9 },
     { "check": "G4", "from": 0, "impact_pts": 2.9 }
   ],
@@ -444,7 +454,7 @@ Field notes:
   "overall_pct": 38.3,
   "band": "Fragile",
   "evidence_density_pct": 58.5,
-  "distinct_evidence_paths": 31,
+  "distinct_evidence_paths": 23,
   "files_examined": 47,
   "files_total": 312,
   "configs_examined": 11,

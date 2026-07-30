@@ -87,9 +87,13 @@ The pre-write scan is not a lock: two concurrent audits of the same repo on
 the same day can both compute the same NN. Collision resolution is therefore
 mandatory: **immediately after appending, re-read PROPOSALS.md once more.** If
 any id you just wrote also appears in an entry you did not write — or NN would
-exceed 99 — rename YOUR entry by suffixing your audit's history-filename time:
-`PROP-YYYYMMDD-<repo-slug>-NN-HHMMSS`. Re-read once more to confirm the
-renamed id is unique before presenting the scorecard.
+exceed 99 — rename YOUR entry by suffixing your audit's start time:
+`PROP-YYYYMMDD-<repo-slug>-NN-HHMMSS`. The HHMMSS suffix source is the audit's
+start time in America/New_York, HHMMSS (identical to the history-filename time
+whenever a history file is written — partial mode writes none but still has a
+start time). If the suffixed id still collides, apply a monotonic -2/-3 suffix
+until unique. Re-read once more to confirm the renamed id is unique before
+presenting the scorecard.
 
 Append only after re-reading: if the target section shows the placeholder
 `*(none — delete this line when adding the first entry)*`, delete that
@@ -104,7 +108,7 @@ checklist item 9).
 
 The diff must be concrete and mechanically applicable. For a `new-check`, write
 the full check entry as it would appear in rubric.yaml (id, name, description,
-evidence_hints, added_in, rationale). For a `weight-change`, show both the
+evidence_hints, scoring_anchors, added_in, rationale). For a `weight-change`, show both the
 weight you raise and the weight you lower — total pillar weights must still
 sum to 100.
 
@@ -220,7 +224,7 @@ the skill with the evolve argument. Evolve mode never runs implicitly.
    ```
    Never delete rejected entries. They are the institutional memory that stops
    future models from re-proposing the same idea.
-7. **Verify and report** — run this 11-item checklist, every item mandatory:
+7. **Verify and report** — run this 12-item checklist, every item mandatory:
    1. Pillar weights sum to 100.
    2. rubric.yaml parses as YAML.
    3. Check ids are unique and no deprecated id was reused.
@@ -234,7 +238,9 @@ the skill with the evolve argument. Evolve mode never runs implicitly.
       check-count, pillar display name, mode name, and template-element count
       the accepted diff invalidated (SKILL.md hardcodes the pillar names in
       its output template and the "all 11 template elements" count; EVOLUTION.md
-      and PROPOSALS.md restate formats and mode-dependent rules).
+      and PROPOSALS.md restate formats and mode-dependent rules). If a
+      scoring-change was applied, recompute every worked-example number in
+      scoring.md §§1.4, 4.2, 5 under the amended formula.
    8. PROPOSALS.md sections are consistent: every dispatched entry moved to
       Accepted or Rejected; deferred entries remain in Pending, each with its
       dated `- **Deferred:**` line; placeholders correct.
@@ -247,6 +253,8 @@ the skill with the evolve argument. Evolve mode never runs implicitly.
       file) scoring.md §4.1's `mode` enum.
    11. SKILL.md's frontmatter `description:` is ≤ 1024 characters after any
       edit (hard platform cap on skill descriptions).
+   12. Every check in rubric.yaml has a non-empty scoring_anchors block
+      (grep -c scoring_anchors equals the check count).
    Confirm every pending proposal was dispatched or explicitly deferred, then
    summarize: N accepted, M rejected, K deferred, new version.
 

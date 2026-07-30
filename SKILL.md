@@ -1,6 +1,6 @@
 ---
 name: ai-system-stability-audit
-description: Score an AI, agent, LLM, or RAG codebase for production stability — a weighted, evidence-cited scorecard across eight pillars with every gap ranked by exact point impact. Use when the user says "audit my AI system", "how stable is my agent system", "score this AI repo", "what's my AI product missing", "AI production-readiness check", or wants an eval-maturity or governance health-check of an LLM/agent system. Modes — full scorecard (default), gaps (ranked misses only), compare (deltas vs the last audit of the same repo), partial (named pillars only), evolve (review pending rubric proposals with the skill owner's approval), plus a dry-run prefix that skips history and proposal writes. Covers prompt-injection defense, tool/MCP security, agent sandboxing, supply-chain pinning, memory hygiene. Not for generic security audits (/cso), code-quality reviews, or business/funnel gap analysis (/absence-detector).
+description: Score an AI, agent, LLM, or RAG codebase for production stability — a weighted, evidence-cited scorecard across eight pillars with every gap ranked by exact point impact. Use when the user says "audit my AI system", "how stable is my agent system", "score this AI repo", "what's my AI product missing", "AI production-readiness check", or wants an eval-maturity or governance health-check of an LLM/agent system. Modes — full scorecard (default), gaps (ranked misses only), compare (deltas vs the last audit of the same repo), partial (named pillars only), evolve (review pending rubric proposals with the skill owner's approval), plus a dry-run prefix that skips history and proposal writes. Covers prompt-injection defense, tool/MCP security, agent sandboxing, supply-chain pinning, memory hygiene. Not for generic security audits (/cso), code-quality reviews, business/funnel gap analysis (/absence-detector), or Zero-Trust/exploit-path code audits (/adversarial-static-review, security-review).
 ---
 
 # AI System Stability Audit
@@ -11,7 +11,7 @@ You are auditing this codebase as a principal AI systems architect. Your job is 
 
 Before scoring anything, ALWAYS read, in this order:
 
-1. `rubric.yaml` (in this skill's directory) — the pillars, checks, weights, evidence hints, and maturity bands. **Never score from remembered checks — the rubric evolves between sessions and your memory of it is stale by definition.** Note the `rubric_version:` key.
+1. `rubric.yaml` (in this skill's directory) — the pillars, checks, weights, evidence hints, scoring_anchors, and maturity bands. **Never score from remembered checks — the rubric evolves between sessions and your memory of it is stale by definition.** Note the `rubric_version:` key.
 2. `scoring.md` — the exact formulas for every number you will report (pillar %, overall %, N/A renormalization, evidence density, coverage, gap impacts, deltas, rounding, history JSON schema). Compute exactly as defined there.
 
 State the `rubric_version` in the header of every report.
@@ -31,7 +31,7 @@ State the `rubric_version` in the header of every report.
 | **full** (default) | "audit", "score this repo" | Complete scorecard (format below) |
 | **gaps** | "gaps", "what's missing" | Gaps mode outputs: all three header lines of the output template (the header line, the overall adherence + band line, and the evidence density + distinct evidence paths line), the Top gaps table (size per scoring.md §2.4), Top 5 risks, Prioritized fixes, and the rubric-feedback/proposals step — nothing else. Ranking per scoring.md §2.3–2.4, with the "+N.N pts" headline for closing the top 10 (summed per the §2.4 aggregation rule) |
 | **compare** | "compare", "re-audit", "delta" | Full audit + per-pillar/per-check deltas vs. the most recent prior `history/` entry for this repo (snapshotted before any write — see procedure), per scoring.md §2.5; cross-rubric-version comparisons flagged and recomputed per scoring.md §3 |
-| **partial** | "partial: <pillar names>" | Audits only the named pillars. Pillar arguments accept pillar ids or display names, case-insensitive, with "&" and "and" interchangeable; echo the resolved pillar id list before scoring. Outputs the header (with scope stated), the evidence-density + distinct-paths line computed over the audited pillars only (state that scope on the line), the per-pillar sections, a gap table computed with RAW pillar weights (flag this assumption in the output), and the Rubric feedback section; suppresses overall %, band, and the Σ-impacts invariant; writes NO history JSON and still files proposals |
+| **partial** | "partial: <pillar names>" | Audits only the named pillars. Pillar arguments accept pillar ids or display names, case-insensitive, with "&" and "and" interchangeable; echo the resolved pillar id list before scoring. Outputs the header (with scope stated), the evidence-density + distinct-paths line computed over the audited pillars only (state that scope on the line), the pillar table restricted to the audited pillars, and the Detailed findings section for those pillars, a gap table computed with RAW pillar weights (flag this assumption in the output), and the Rubric feedback section; suppresses overall %, band, and the Σ-impacts invariant; writes NO history JSON and still files proposals |
 | **evolve** | "evolve", "review proposals", "apply proposals" | Process PROPOSALS.md exactly per EVOLUTION.md — review cards, impact analysis against history/, the skill owner decides each proposal. Never runs implicitly. |
 
 Gaps and compare run the same evidence sweep as full — they differ only in what is reported. Proposals are filed after ANY audit — full, gaps, compare, or partial — and NEVER in a dry-run. Full, gaps, and compare write a history JSON; partial writes no history JSON.
@@ -42,17 +42,17 @@ Gaps and compare run the same evidence sweep as full — they differ only in wha
 
 1. **Identify the target.** Target = the argument path if given, else the git root of cwd, else cwd; state the resolved target in the header. Then: repo name, path, git remote if any, primary languages/frameworks, entry points, and how the LLM layer is wired (SDK direct, gateway, agent framework). Compute `files_total` per scoring.md §2.2 (`git ls-files | wc -l`, or the stated fallback).
 2. **Sweep per pillar.** For each check in rubric.yaml, run its `evidence_hints` — they are search strategies (greps, globs, anti-evidence patterns), not a script; adapt them to the repo's stack. Track every unique file you actually examine (for the coverage metric and the `files_manifest`).
-3. **Score each check** 0 / 1 / 2 / N/A with a one-line citation (≤200 chars, always containing a path or key for 1–2; for 0, what was searched; for N/A, the one-sentence argument).
+3. **Score each check** 0 / 1 / 2 / N/A by matching the evidence found against that check's `scoring_anchors` in rubric.yaml — the anchors, not intuition, decide the level. Attach a one-line citation (≤200 chars, always containing a path or key for 1–2; for 0, what was searched; for N/A, the one-sentence argument) that states which anchor level matched.
 4. **Compute** everything per scoring.md: pillar percentages, overall %, band, evidence density, distinct evidence paths, coverage, gap impact per non-2 check. Verify the invariant: unrounded gap impacts sum to `100 − overall_pct`. If not, recompute — do not report broken math.
 5. **Compare mode only — snapshot the baseline.** Read and snapshot the most recent history entry for this repo_slug BEFORE writing anything; the baseline is the latest entry strictly earlier than this run; if none exists, print "no prior audit for <slug> — compare downgraded to full" and continue as full mode.
 6. **Write the history JSON** to this skill's directory: `history/<repo-slug>-<YYYY-MM-DD-HHMMSS>.json` (timestamp in America/New_York, seconds precision; if that filename already exists, apply the scoring.md §4 collision rule — suffix `-2`, `-3`, …, never overwrite an existing history file), exact schema in scoring.md §4. Skip this step entirely in partial mode and in any dry-run.
-7. **Output the scorecard** (format below). In gaps mode output only the enumerated gaps-mode sections (see Modes table). In partial mode output only the header (scope stated), the evidence-density + distinct-paths line (audited pillars only, scope stated), the per-pillar sections, the raw-weight gap table, and the Rubric feedback section.
+7. **Output the scorecard** (format below). In gaps mode output only the enumerated gaps-mode sections (see Modes table). In partial mode output only the header (scope stated), the evidence-density + distinct-paths line (audited pillars only, scope stated), the pillar table restricted to the audited pillars, and the Detailed findings section for those pillars, the raw-weight gap table, and the Rubric feedback section.
 8. **File rubric proposals** (mandatory after ANY audit — full, gaps, compare, or partial — and NEVER in a dry-run; see final step below).
 9. **Commit.** After writing history/proposal files, commit the skill directory (best-effort; skip silently if git unavailable).
 
 ## Output format
 
-Produce exactly this structure (Δ column and Δ annotations only when a prior history entry exists for this repo). The header `<YYYY-MM-DD>` is the audit date in America/New_York — the same instant as the history filename timestamp and the history JSON `date` field (scoring.md §4/§4.1), never the local or UTC date:
+Produce exactly this structure (Δ column and Δ annotations appear in compare mode only, and only when a prior history entry exists — see the snapshot step). The header `<YYYY-MM-DD>` is the audit date in America/New_York — the same instant as the history filename timestamp and the history JSON `date` field (scoring.md §4/§4.1), never the local or UTC date:
 
 ```
 # AI System Stability Scorecard: <project name>
@@ -73,6 +73,8 @@ Evidence density: NN.N% (<evidenced> of <applicable> applicable checks citable) 
 | Rollout Maturity | NN.N% | ... | ... | ... |
 | NFR Foundations | NN.N% | ... | ... | ... |
 <every "Strongest evidence" and "Biggest gap" cell MUST contain a check ID and/or a file path — never prose alone>
+<cell selection is deterministic: "Biggest gap" = the pillar's top row under scoring.md §2.4 ordering; "Strongest evidence" = the pillar's highest-scored check that carries a citation, tie-broken by rubric order>
+<an entirely-N/A pillar row renders: n/a (all <k> checks N/A; weight <w> redistributed per scoring.md §1.4 Rule B)>
 
 ## Detailed findings
 <per pillar: each check with score, evidence path, and one-line note>
@@ -93,7 +95,7 @@ Evidence density: NN.N% (<evidenced> of <applicable> applicable checks citable) 
 <default selection and order: the top 5 rows of the scoring.md §2.4 gap ranking. A row may be swapped for a lower-ranked check ONLY with a stated failure-scenario justification for the swap — so any deviation is itself auditable. Each risk MUST name the failed check ID and its point headroom (+N.N pts), tied to a concrete failure scenario>
 
 ## Prioritized fixes
-<every item in all three buckets MUST carry its check ID and its already-computed "+N.N pts">
+<every item in all three buckets MUST carry its check ID and its already-computed "+N.N pts". Assigning a check to a bucket is the ONE explicitly judgment-based grouping in the report; within each bucket, items are ordered by their scoring.md §2.4 rank>
 1. Quick wins (under a day each)
 2. Structural work (design changes)
 3. Process work (evals, rollout criteria, ownership)

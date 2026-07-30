@@ -52,12 +52,13 @@ entry — never replace existing content. -->
 
 ### PROP-20260729-meta-01
 - **Date:** 2026-07-29
-- **Proposer:** claude-fable-5 + review panel (Codex, Opus 5), 2026-07-29
+- **Proposer:** claude-fable-5
 - **Rubric version:** 2.0.0
 - **Type:** new-mode
 - **Affects:** modes (SKILL.md)
 - **Audit that prompted it:** history-signal
-- **Rationale:** History signal is 1 of 3 declared proposal sources
+- **Rationale:** (Non-normative note: reviewed by panel — Codex, Opus 5 —
+  2026-07-29.) History signal is 1 of 3 declared proposal sources
   (EVOLUTION.md), yet no mode computes it today — a model must eyeball raw
   history JSONs to spot the patterns the protocol asks for (checks that score
   2 in every audit, checks N/A in >80% of audits). With ≥3 history entries
@@ -76,12 +77,13 @@ entry — never replace existing content. -->
 
 ### PROP-20260729-meta-02
 - **Date:** 2026-07-29
-- **Proposer:** claude-fable-5 + review panel (Codex, Opus 5), 2026-07-29
+- **Proposer:** claude-fable-5
 - **Rubric version:** 2.0.0
 - **Type:** scoring-change
 - **Affects:** scoring (scoring.md §4 history JSON schema)
 - **Audit that prompted it:** history-signal
-- **Rationale:** Evolve mode's impact analysis is required to rescore
+- **Rationale:** (Non-normative note: reviewed by panel — Codex, Opus 5 —
+  2026-07-29.) Evolve mode's impact analysis is required to rescore
   history/ under a proposed rubric, but history JSONs store only a ≤200-char
   evidence line per check — when a check's meaning or anchors change, old
   audits cannot be rescored and must be marked "unknown — will apply from
