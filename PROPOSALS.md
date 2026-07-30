@@ -181,6 +181,59 @@ entry — never replace existing content. -->
   automates validation but not quality evals (this repo scored P6=1 under the
   proposed rule)
 
+### PROP-20260730-ai-system-stability-audit-04
+- **Date:** 2026-07-30
+- **Proposer:** claude-fable-5
+- **Rubric version:** 2.0.0
+- **Type:** evidence-hint
+- **Affects:** DECISION_ENGINE / D2
+- **Audit that prompted it:** ai-system-stability-audit 2026-07-30 (first
+  executed golden run — fixture-repo divergence D2: auditor 0 vs authored
+  expected 1)
+- **Rationale:** D2's hint says confidence must be "COMPUTED, not
+  model-self-reported prose", but the scoring_anchors never repeat the word
+  "computed" at level 0, so a self-reported confidence value that IS attached
+  and consumed (the fixture's exact pattern — model rates itself, threshold
+  gates on it) fits no anchor cleanly: not "no signal anywhere" (0), not
+  "computed but discarded" (1). Two scorers split 0 vs 1 on the golden
+  fixture — a 1.0-pt swing on a common real-world pattern.
+- **Suggested change (diff-style):**
+  ```diff
+  # rubric.yaml, D2 scoring_anchors
+  -          0 = no computed confidence signal anywhere; 1 = a signal is computed
+  +          0 = no computed confidence signal anywhere (a model-self-reported
+  +          confidence value does not count as computed, even if attached and
+  +          consumed downstream); 1 = a signal is computed
+  ```
+- **Expected semver bump if accepted:** patch
+- **Score impact estimate:** resolves a 1.0-pt two-scorer split observed on
+  the golden fixture's self-reported-confidence pattern
+
+### PROP-20260730-ai-system-stability-audit-05
+- **Date:** 2026-07-30
+- **Proposer:** claude-fable-5
+- **Rubric version:** 2.0.0
+- **Type:** evidence-hint
+- **Affects:** CONTEXT_DATA / C5
+- **Audit that prompted it:** ai-system-stability-audit 2026-07-30 (first
+  executed golden run — fixture-repo divergence C5: auditor 1 vs expected N/A;
+  auditor conceded)
+- **Rationale:** On a system with no retrieval layer, C5 has no
+  empty-retrieval state and is N/A — but nothing in the hints says so, and an
+  auditor can be tempted to credit a generic low-confidence fallback branch
+  under C5, double-counting D3's scope (exactly what happened on the golden
+  run: same app.py branch nearly earned both C5=1 and D3=1). A 1.2-pt
+  score-inflation path on every non-RAG system audited.
+- **Suggested change (diff-style):**
+  ```diff
+  # rubric.yaml, C5 evidence_hints
+  +          - "no retrieval layer in the system at all -> C5 is N/A (no empty-retrieval state exists); do NOT credit generic low-confidence fallback branches here - that behavior is D3's scope, and counting it twice inflates both pillars"
+  ```
+- **Expected semver bump if accepted:** patch
+- **Score impact estimate:** removes a 1.2-pt double-count path on every
+  non-RAG audit (golden fixture C&D pillar: 50.0% under the double-count vs
+  N/A-whole-pillar under the correct reading)
+
 ## Accepted
 
 <!-- Evolve mode moves accepted proposals here. Each entry keeps its original
